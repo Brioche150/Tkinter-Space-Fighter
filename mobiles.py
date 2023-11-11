@@ -19,7 +19,7 @@ class Mobile:
         if self.xSpeed != 0 or self.ySpeed != 0: 
             self.x += self.xSpeed
             self.y += self.ySpeed
-            self.canvas.moveto(self.imageID, math.floor(self.x), math.floor(self.y))
+            self.canvas.move(self.imageID, self.xSpeed, self.ySpeed)
             print(str(self.x) + ", " + str(self.y)) 
     
 
