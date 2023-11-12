@@ -23,11 +23,12 @@ def moveDown(*ignore):
 def handleMobs():
     global mobs
     temp = mobs.copy()
-    for mob in temp:
+    for ID in temp:
+        mob = mobs[ID]
         mob.move()
         if mob.health <=0:
             canvas.delete(mob.imageID)
-            mobs.remove(mob)
+            mobs.pop(ID)
         if isinstance(mob,mobiles.GruntEnemy):
             mob.fire(player.x,player.y,mobs)
 
@@ -44,7 +45,7 @@ def tick():
 
 def fire(event):
     global mobs
-    player.fire(event,mobs)
+    player.fire(event)
 #     global mobs, player
 #     mobs.append(player.fire(event))
 #     x = player.x+10
@@ -78,18 +79,17 @@ test = ImageTk.PhotoImage(test) # Have to convert to PhotoImage to use in the ca
 canvas.pack()
 crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
-mobs : list[mobiles.Mobile] # I love dynamically typed languages. It's so helpful to not get function suggestions because you have to jump through hoops to get hints for specific types.
-mobs =[]
+mobs : dict[int,mobiles.Mobile] = {} # This list is useful for keeping track of things that need to have the move function ran on them
 paused = True
 temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
-playerImageID = canvas.create_image(766,800,anchor="nw",image= temp)
-player = mobiles.Player(766,800,playerImageID,canvas, temp.height(), temp.width())
-mobs.append(player)
+playerID = canvas.create_image(766,800,anchor="nw",image= temp)
+player = mobiles.Player(766,800,playerID,canvas, temp.height(), temp.width(),mobs)
+mobs[playerID] = player
 
 enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
 enemyID = playerImageID = canvas.create_image(1066,500,anchor="nw",image= enemyImage)
 enemy = mobiles.GruntEnemy(1066,500,enemyID,canvas,enemyImage.height(),enemyImage.width(),math.pi * 1.5)
-mobs.append(enemy)
+mobs[enemyID] = enemy
 
 window.bind("a",moveLeft)
 window.bind("d",moveRight)

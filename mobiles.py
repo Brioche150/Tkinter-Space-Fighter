@@ -1,4 +1,5 @@
 import math
+from string import hexdigits
 from tkinter import PhotoImage, Canvas
 from numpy import sign
 import random as rand
@@ -11,7 +12,15 @@ def keepInBounds(num,min,max):
         return num
 
 class Mobile:
-    def __init__(self, x, y, imageID, canvas: Canvas, height, width, speed, health =1 ) -> None:
+    """This is the super class of all entities that will be moving around.
+    attributes: x and y are ints giving the coordinates of the object
+    ImageID is an int storing the ID of the object that the canvas uss
+    Canvas is a reference to the canvas itself, so that it can be editied easily
+    Height and width are ints give the pixel height and width of the image
+    speed is a float giving the maximum speed of the object
+    health is an int storing the health of the object
+    """
+    def __init__(self, x, y, imageID, canvas: Canvas, height, width, speed, health =1, isEnemy =True ) -> None:
         self.x =x
         self.y =y
         self.imageID = imageID
@@ -22,6 +31,7 @@ class Mobile:
         self.height = height
         self.width = width
         self.health = health
+        self.isEnemy = isEnemy
         
     
     def move(self):
@@ -38,9 +48,19 @@ class Mobile:
             self.canvas.moveto(self.imageID, math.floor(self.x), math.floor(self.y)) # Could use move, but I prefer this, it could help if things move at weird angles.
             
     def changeXSpeed(self,change):
+        """This changes the xSpeed of the object, while making sure it doesn't go over the max speed set by self.speed
+
+        Args:
+            change (float): The amount that self.Xspeed is to be changed by
+        """
         self.xSpeed += change
         self.xSpeed = keepInBounds(self.xSpeed,-self.speed,self.speed)
     def changeYSpeed(self,change):
+        """This changes the xSpeed of the object, while making sure it doesn't go over the max speed set by self.speed
+
+        Args:
+            change (float): The amount that self.Xspeed is to be changed by
+        """
         self.ySpeed += change
         self.ySpeed = keepInBounds(self.ySpeed,-self.speed,self.speed)
     
@@ -53,10 +73,9 @@ class NPC(Mobile):
     Args:
         Mobile (_type_): _description_
     """
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =3, isEnemy = True) -> None:
-        super().__init__(x,y,imageID, canvas, height, width,speed)
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =3,health=1,isEnemy = True) -> None:
+        super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
         self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
-        self.isEnemy = isEnemy
         self.updateSpeedsFromDirection()
         
     def updateSpeedsFromDirection(self):
@@ -70,15 +89,22 @@ class Projectile(NPC):
         NPC (_type_): _description_
     """
     
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =15, isEnemy = True) -> None:
-        super().__init__(x,y,imageID, canvas, height, width,direction,speed,isEnemy)
-        self.direction =direction
-        self.speed =speed
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, mobs : dict[int,Mobile] = None, speed =15,health=1, isEnemy = True) -> None:
+        super().__init__(x,y,imageID, canvas, height, width,direction,speed,health,isEnemy)
+        self.mobs = mobs
         
     def move(self):
-        """Projectile's move is the same as the regular move - updating position based on x and y speed - but deletes the projectile if it hits the edge of the canvas
+        """Projectile's move is the same as the regular move - updating position based on x and y speed - but deletes the projectile if it hits the edge of the canvas.
+        There is also a section dealing with collision, shooting at enemies
         """
         super().move()
+        if not self.isEnemy: # only runs collision logic if it's the player's own shot
+            IDs = self.canvas.find_overlapping(self.x,self.y,self.x+self.width,self.y+self.height)
+            for ID in IDs:
+                if self.mobs[ID].isEnemy and isinstance(self.mobs[ID],GruntEnemy):
+                    self.health -= 1
+                    self.mobs[ID].health -=1
+                    break
         if self.x == self.canvas.winfo_width() - self.width or self.x == 0 or self.y == self.canvas.winfo_height() -self.height or self.y == 0:
             self.health =0
 
@@ -90,11 +116,9 @@ class GruntEnemy(NPC):
     """
     def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =3, isEnemy = True, shotCooldown = 100) -> None:
         super().__init__(x,y,imageID, canvas, height, width,direction,speed,isEnemy)
-        self.direction =direction
-        self.speed =speed
         self.shotCooldown = shotCooldown
     
-    def fire(self,x,y, mobs):
+    def fire(self,x,y, mobs : dict[int,Mobile]):
         """this is the grunt's fire code. It will fire intermittently roughly at the player. It should be called every tick
 
         Args:
@@ -118,7 +142,7 @@ class GruntEnemy(NPC):
                     direction += 2 * math.pi
             direction += rand.uniform(-math.pi/8, math.pi/8)
             shot = Projectile(self.x,self.y,shotID,self.canvas,10,10,direction, speed=7)
-            mobs.append(shot)
+            mobs[shotID] = shot
             self.shotCooldown = 200
         else:
             self.shotCooldown -=1
@@ -126,11 +150,21 @@ class GruntEnemy(NPC):
 class Player(Mobile):
     """This is the player class, which the user will control in this space fighter game.
     """
-    def __init__(self, x,y, imageID, canvas: Canvas, height, width, speed =5, health =3) -> None:
-        super().__init__(x,y,imageID, canvas, height, width,speed)
-        self.health =health
+    def __init__(self, x,y, imageID, canvas: Canvas, height, width, mobs : dict[int,Mobile], speed =5, health =3, isEnemy = False) -> None:
+        super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
+        self.mobs = mobs
         
-    def fire(self,event,mobs):
+    def move(self):
+        super().move()
+        IDs = self.canvas.find_overlapping(self.x,self.y,self.x+self.width,self.y+self.height)
+        for ID in IDs:
+            if self.mobs[ID].isEnemy:
+                self.health -= 1
+                self.mobs[ID].health -=1
+                print("Damage Taken! Health = " + str(self.health))
+                break # Break is here because otherwise the player could get damaged multiple times in a frame, which is unfun.
+    
+    def fire(self,event):
         """This is how the player fires shots where the mouse is at the time
 
         Args:
@@ -152,6 +186,7 @@ class Player(Mobile):
                 direction += math.pi
             elif dx < 0:
                 direction += 2 * math.pi
-        shot = Projectile(x,y,shotID,self.canvas,10,10,direction,isEnemy=False)
-        mobs.append(shot)
+        shot = Projectile(x,y,shotID,self.canvas,10,10,direction,mobs= self.mobs,isEnemy=False)
+        self.mobs[shotID] = shot
+    
     
