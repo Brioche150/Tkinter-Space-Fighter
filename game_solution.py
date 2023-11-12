@@ -20,16 +20,20 @@ def moveDown(*ignore):
     global player
     player.changeYSpeed(player.speed)
 
-def moveMobiles():
+def handleMobs():
     global mobs
-    for mob in mobs:
+    temp = mobs.copy()
+    for mob in temp:
         mob.move()
+        if mob.health <=0:
+            canvas.delete(mob.imageID)
+            mobs.remove(mob)
         
 
 def update(*ignore):
     global window
     if not paused:
-        moveMobiles()
+        handleMobs()
         window.after(10,update)
 
 def fire(event):
@@ -49,7 +53,7 @@ def fire(event):
             direction += math.pi
         elif dx < 0:
             direction += 2 * math.pi
-    shot = mobiles.NPC(x,y,shotID,canvas,10,10,direction)
+    shot = mobiles.Projectile(x,y,shotID,canvas,10,10,direction)
     shot.updateSpeedsFromDirection()
     mobs.append(shot)
     

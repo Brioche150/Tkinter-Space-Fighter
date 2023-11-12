@@ -9,7 +9,7 @@ def keepInBounds(num,min,max):
         return num
 
 class Mobile:
-    def __init__(self, x, y, imageID, canvas, height, width, speed = 10) -> None:
+    def __init__(self, x, y, imageID, canvas, height, width, speed, health =1 ) -> None:
         self.x =x
         self.y =y
         self.imageID = imageID
@@ -19,6 +19,7 @@ class Mobile:
         self.speed = speed
         self.height = height
         self.width = width
+        self.health = health
         
     
     def move(self):
@@ -48,9 +49,8 @@ class Player(Mobile):
     """This is the player class, which the user will control in this space fighter game.
     """
     def __init__(self, x,y, imageID, canvas, height, width, health =3, speed =5) -> None:
-        super().__init__(x,y,imageID, canvas, height, width)
+        super().__init__(x,y,imageID, canvas, height, width,speed)
         self.health =health
-        self.speed = speed
         
 class NPC(Mobile):
     """This is the class all other mobile entities fit in, and they will be guided by direction, with a set speed
@@ -58,12 +58,29 @@ class NPC(Mobile):
     Args:
         Mobile (_type_): _description_
     """
-    def __init__(self,x,y,imageID,canvas,height,width, direction, speed =10) -> None:
-        super().__init__(x,y,imageID, canvas, height, width)
+    def __init__(self,x,y,imageID,canvas,height,width, direction, speed =3) -> None:
+        super().__init__(x,y,imageID, canvas, height, width,speed)
         self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
-        self.speed = speed
         
     def updateSpeedsFromDirection(self):
         self.ySpeed = self.speed * -math.cos(self.direction)
         self.xSpeed = self.speed * math.sin(self.direction)
+
+class Projectile(NPC):
+    """This is class for projectiles shot by the player or enemy. Its main difference is that it deletes the objects
+
+    Args:
+        NPC (_type_): _description_
+    """
+    
+    def __init__(self,x,y,imageID,canvas,height,width, direction, speed =15) -> None:
+        super().__init__(x,y,imageID, canvas, height, width,speed)
+        self.direction =direction
+        self.speed =speed
+        
+    def move(self):
+        super().move()
+        #This is just adding logic to delete projectiles once they hit the edge of the screen
+        if self.x == self.canvas.winfo_width() - self.width or self.x == 0 or self.y == self.canvas.winfo_height() -self.height or self.y == 0:
+            self.health =0
     
