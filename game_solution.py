@@ -28,34 +28,42 @@ def handleMobs():
         if mob.health <=0:
             canvas.delete(mob.imageID)
             mobs.remove(mob)
-        
+        if isinstance(mob,mobiles.GruntEnemy):
+            mob.fire(player.x,player.y,mobs)
 
-def update(*ignore):
+def flipPaused(*ignore):
+    global paused
+    paused = not paused
+    tick()
+
+def tick():
     global window
     if not paused:
         handleMobs()
-        window.after(10,update)
+        window.after(10,tick)
 
 def fire(event):
-    global mobs, player
-    x = player.x+10
-    y = player.y+10
-    shotID = canvas.create_oval(x,y,x+10,y+10,fill="yellow")
+    global mobs
+    player.fire(event,mobs)
+#     global mobs, player
+#     mobs.append(player.fire(event))
+#     x = player.x+10
+#     y = player.y+10
+#     shotID = canvas.create_oval(x,y,x+10,y+10,fill="yellow")
     
-    dx = event.x - x
-    dy =  y - event.y # flipped around from the other one, to make it like a normal coordinate system
+#     dx = event.x - x
+#     dy =  y - event.y # flipped around from the other one, to make it like a normal coordinate system
     
-    if(dy == 0):
-        direction = math.pi/2 + (((-sign(dx) + 1)/2) * math.pi) # This is here to avoid zero division errors.
-    else:
-        direction = math.atan(dx/dy)# this calculates the bearing based on the vector between the mouse click and the shot when it spawns
-        if dy < 0:
-            direction += math.pi
-        elif dx < 0:
-            direction += 2 * math.pi
-    shot = mobiles.Projectile(x,y,shotID,canvas,10,10,direction)
-    shot.updateSpeedsFromDirection()
-    mobs.append(shot)
+#     if(dy == 0):
+#         direction = math.pi/2 + (((-sign(dx) + 1)/2) * math.pi) # This is here to avoid zero division errors.
+#     else:
+#         direction = math.atan(dx/dy)# this calculates the bearing based on the vector between the mouse click and the shot when it spawns
+#         if dy < 0:
+#             direction += math.pi
+#         elif dx < 0:
+#             direction += 2 * math.pi
+#     shot = mobiles.Projectile(x,y,shotID,canvas,10,10,direction,isEnemy=False)
+#     mobs.append(shot)
     
     
 
@@ -70,13 +78,18 @@ test = ImageTk.PhotoImage(test) # Have to convert to PhotoImage to use in the ca
 canvas.pack()
 crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
-mobs=[]
-paused = False
+mobs : list[mobiles.Mobile] # I love dynamically typed languages. It's so helpful to not get function suggestions because you have to jump through hoops to get hints for specific types.
+mobs =[]
+paused = True
 temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
 playerImageID = canvas.create_image(766,800,anchor="nw",image= temp)
 player = mobiles.Player(766,800,playerImageID,canvas, temp.height(), temp.width())
 mobs.append(player)
 
+enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
+enemyID = playerImageID = canvas.create_image(1066,500,anchor="nw",image= enemyImage)
+enemy = mobiles.GruntEnemy(1066,500,enemyID,canvas,enemyImage.height(),enemyImage.width(),math.pi * 1.5)
+mobs.append(enemy)
 
 window.bind("a",moveLeft)
 window.bind("d",moveRight)
@@ -87,6 +100,6 @@ window.bind("<KeyRelease-d>",moveLeft)
 window.bind("<KeyRelease-s>",moveUp)
 window.bind("<KeyRelease-w>",moveDown)
 window.bind("<Button-1>",fire)
-window.bind("p",update)
+window.bind("p",flipPaused)
 
 window.mainloop()
