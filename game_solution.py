@@ -2,7 +2,7 @@
 #Twitter: @_cluly_
 
 import math
-from tkinter import Tk, Canvas, PhotoImage, EventType
+from tkinter import Label, Tk, Canvas, PhotoImage, EventType
 from PIL import Image, ImageTk
 from numpy import sign
 import mobiles
@@ -72,13 +72,56 @@ def fire(event):
 
 window = Tk()
 window.title("Space-Fighter")
-canvas = Canvas(window, bg="black", height=864, width=1536)
+window.geometry("1536x864")
+window.configure(bg="black")
+
 test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
 test = test.resize((500,200), Image.LANCZOS) # Not sure how needed LANCZOS is needed, but it's some form of antialias.
 test = ImageTk.PhotoImage(test) # Have to convert to PhotoImage to use in the canvas
-canvas.pack()
-crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
+#crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
+
+
+canvas = Canvas(window, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
+canvas.grid(column=2,row=1,rowspan=10)
+leftWall = Image.open("assets/Statics/bigLeftWall.png")
+#leftWall = leftWall.crop( (0, 0, leftWall.width, int(canvas.cget('height'))) )
+#leftWall.configure(height=int(canvas.cget('height')))
+tempImage = ImageTk.PhotoImage(leftWall)
+tempLabel = Label(window,image=tempImage,borderwidth=0)
+tempLabel.grid(column=1,row=1,rowspan=10)
+tempLabel = Label(window,image=PhotoImage(leftWall.rotate(180)),borderwidth=0)
+tempLabel.grid(column=3,row=1,rowspan=10)
+
+# rightWall = PhotoImage(file="assets/Statics/rightWallPanel.png")
+
+
+# print(int(824 / leftWall.height()))
+# for i in range(1,int(int(canvas.cget('height')) / leftWall.height()) +1):
+#     tempLabel = Label(window,image=leftWall,borderwidth=0)
+#     tempLabel.grid(column=1,row=i)
+#     tempLabel = Label(window,image=rightWall,borderwidth=0)
+#     tempLabel.grid(column=3,row=i)
+
+
+# #canvas.pack(side="top")
+
+
+
+# #topLeftCorner = PhotoImage(file="assets/Statics/topLeftCorner.png") 
+# topLeftCorner=Image.open("assets/Statics/topLeftCorner.png")
+
+ 
+# tempLabel = Label(window,image=PhotoImage(topLeftCorner),borderwidth=0)
+# tempLabel.grid(column=1,row=0)
+# tempLabel = Label(window,image=PhotoImage(topLeftCorner.rotate(270)),borderwidth=0)
+# tempLabel.grid(column=3,row=0)
+# tempLabel = Label(window,image=PhotoImage(topLeftCorner.rotate(180)),borderwidth=0)
+# tempLabel.grid(column=3,row=0)
+
+
+
+
 mobs : dict[int,mobiles.Mobile] = {} # This list is useful for keeping track of things that need to have the move function ran on them
 paused = True
 temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
