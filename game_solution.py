@@ -57,30 +57,46 @@ window.configure(bg="black")
 
 
 canvas = Canvas(window, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
-canvas.grid(column=2,row=1,rowspan=10)
+canvas.grid(column=3,row=1,rowspan=10)
 
 verticalWall = Image.open("assets/Statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
 leftWall = ImageTk.PhotoImage(verticalWall) # this extra line is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
 tempLabel = Label(window,image=leftWall,borderwidth=0)
-tempLabel.grid(column=1,row=1,rowspan=10)
+tempLabel.grid(column=2,row=1,rowspan=10)
 rightWall = ImageTk.PhotoImage(verticalWall.rotate(180))
 tempLabel = Label(window,image=rightWall,borderwidth=0)
-tempLabel.grid(column=3,row=1,rowspan=10)
+tempLabel.grid(column=4,row=1,rowspan=10)
+
+horizontalWall = Image.open("assets/Statics/bigBottomWall.png")
+horizontalWall = horizontalWall.crop( (0, 0, int(canvas.cget('width')), horizontalWall.height) )
+botWall = ImageTk.PhotoImage(horizontalWall) # this extra line is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
+tempLabel = Label(window,image=botWall,borderwidth=0)
+tempLabel.grid(column=3,row=0)
+topWall = ImageTk.PhotoImage(horizontalWall.rotate(180))
+tempLabel = Label(window,image=topWall,borderwidth=0)
+tempLabel.grid(column=3,row=11)
 
 corner = Image.open("assets/Statics/topLeftCorner.png")
 topLeft = ImageTk.PhotoImage(corner)
 tempLabel = Label(window,image=topLeft,borderwidth=0)
-tempLabel.grid(column=1,row=0)
+tempLabel.grid(column=2,row=0)
 topRight = ImageTk.PhotoImage(corner.rotate(270))
 tempLabel = Label(window,image=topRight,borderwidth=0)
-tempLabel.grid(column=3,row=0)
+tempLabel.grid(column=4,row=0)
 botLeft = ImageTk.PhotoImage(corner.rotate(180))
 tempLabel = Label(window,image=botLeft,borderwidth=0)
-tempLabel.grid(column=3,row=11)
+tempLabel.grid(column=4,row=11)
 botRight = ImageTk.PhotoImage(corner.rotate(90))
 tempLabel = Label(window,image=botRight,borderwidth=0)
-tempLabel.grid(column=1,row=11)
+tempLabel.grid(column=2,row=11)
+heart = PhotoImage(file="assets/Statics/heart.png")
+print(heart.height())
+heartLabel = Label(window,image=heart,borderwidth=0)
+heartLabel.grid(column=1,row=0)
+health = Label(window,text="x3",borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
+health.grid(column=0,row=0)
+
 
 test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
 test = test.resize((500,200), Image.LANCZOS) # Not sure how needed LANCZOS is needed, but it's some form of antialias.
