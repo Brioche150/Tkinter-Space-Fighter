@@ -64,8 +64,10 @@ def tick():
         window.after(tickDelay(),tick)
 
 def fire(event):
-    global mobs
-    player.fire(event)
+    global paused
+    if not paused:
+        global mobs
+        player.fire(event)
 
 
 window = Tk()
