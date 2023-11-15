@@ -1,8 +1,10 @@
 import math
 from string import hexdigits
 from tkinter import PhotoImage, Canvas
-from numpy import sign
+from typing import Dict
 import random as rand
+from constants import tickDelay
+
 
 def keepInBounds(num,min,max):
         if num < min:
@@ -10,6 +12,23 @@ def keepInBounds(num,min,max):
         elif num > max:
             num = max
         return num
+    
+def calcDirection(selfX,selfY,targetX,targetY):
+    dx = targetX - selfX
+    dy =  selfY - targetY # flipped around from the other one, to make it like a normal coordinate system
+    
+    if(dy == 0): # This avoids 0 division errors
+        if(dx <0):
+            direction = math.pi * 3/2
+        else:
+            direction = math.pi / 2
+    else:
+        direction = math.atan(dx/dy)# this calculates the bearing based on the vector between the mouse click and the shot when it spawns
+        if dy < 0:
+            direction += math.pi
+        elif dx < 0:
+            direction += 2 * math.pi
+    return direction
 
 class Mobile:
     """This is the super class of all entities that will be moving around.
@@ -20,7 +39,7 @@ class Mobile:
     speed is a float giving the maximum speed of the object
     health is an int storing the health of the object
     """
-    def __init__(self, x, y, imageID, canvas: Canvas, height, width, speed, health =1, isEnemy =True ) -> None:
+    def __init__(self, x, y, imageID, canvas: Canvas, height, width, speed,health =1, isEnemy =True) -> None:
         self.x =x
         self.y =y
         self.imageID = imageID
@@ -39,10 +58,10 @@ class Mobile:
 
         """
         if self.xSpeed != 0 or self.ySpeed != 0: 
-            self.x += self.xSpeed
+            self.x += self.xSpeed * tickDelay()
             self.x = keepInBounds(self.x,0,self.canvas.winfo_width() - self.width)
 
-            self.y += self.ySpeed
+            self.y += self.ySpeed * tickDelay()
             self.y = keepInBounds(self.y,0,self.canvas.winfo_height() -self.height)
             
             self.canvas.moveto(self.imageID, math.floor(self.x), math.floor(self.y)) # Could use move, but I prefer this, it could help if things move at weird angles.
@@ -73,7 +92,7 @@ class NPC(Mobile):
     Args:
         Mobile (_type_): _description_
     """
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =3,health=1,isEnemy = True) -> None:
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =0.3,health=1,isEnemy = True) -> None:
         super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
         self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
         self.updateSpeedsFromDirection()
@@ -89,7 +108,7 @@ class Projectile(NPC):
         NPC (_type_): _description_
     """
     
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, mobs : dict[int,Mobile] = None, speed =15,health=1, isEnemy = True) -> None:
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, mobs : Dict[int,Mobile] = None, speed =1.5,health=1, isEnemy = True) -> None:
         super().__init__(x,y,imageID, canvas, height, width,direction,speed,health,isEnemy)
         self.mobs = mobs
         
@@ -114,11 +133,34 @@ class GruntEnemy(NPC):
     Args:
         NPC (_type_): _description_
     """
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =3, isEnemy = True, shotCooldown = 100) -> None:
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =0.3, isEnemy = True, shotCooldown = 1000,turnCooldown = 1500) -> None:
         super().__init__(x,y,imageID, canvas, height, width,direction,speed,isEnemy)
-        self.shotCooldown = shotCooldown
+        self.shotCooldown = shotCooldown // tickDelay()
+        self.turnCooldown = turnCooldown // tickDelay()
+        self.shotCooldownReset = self.shotCooldown
+        self.turnCooldownReset = self.turnCooldown
+        self.isSteering = False # This will be used to put the enemy into a state where they "steer", so turn more gradually, rather than suddenly changing direction
+        self.turnRate =0
+    def move(self):
+        super().move()
+        if self.turnCooldown >0:
+            self.turnCooldown -=1
+            if self.isSteering:
+                self.direction += self.turnRate
+                self.updateSpeedsFromDirection()
+                
+        else:
+            self.isSteering = False
+            if rand.randint(1,3) == 1: # Gives 1/3 chance of going into steering mode
+                self.turnCooldown = self.turnCooldownReset /5 # Makes it so that they don't spend ages turning
+                self.isSteering = True
+                self.turnRate = rand.uniform(-math.pi/(2*self.turnCooldown),math.pi / (2* self.turnCooldown))
+            else:
+                self.direction = rand.uniform(-math.pi * 9/8,math.pi/8) # This makes them turn a random direction, but mostly they go left
+                self.updateSpeedsFromDirection()
+                self.turnCooldown = self.turnCooldownReset
     
-    def fire(self,x,y, mobs : dict[int,Mobile]):
+    def fire(self,x,y, mobs : Dict[int,Mobile]):
         """this is the grunt's fire code. It will fire intermittently roughly at the player. It should be called every tick
 
         Args:
@@ -129,28 +171,19 @@ class GruntEnemy(NPC):
         if(self.shotCooldown <= 0):
             shotID = self.canvas.create_oval(self.x + 12,self.y +12,self.x+22,self.y+22,fill="red")
             
-            dx = x - self.x
-            dy =  self.y - y # flipped around from the other one, to make it like a normal coordinate system
+            direction = calcDirection(self.x + 12, self.y +12, x,y)
             
-            if(dy == 0):
-                direction = math.pi/2 + (((-sign(dx) + 1)/2) * math.pi) # This is here to avoid zero division errors.
-            else:
-                direction = math.atan(dx/dy)# this calculates the bearing based on the vector between the mouse click and the shot when it spawns
-                if dy < 0:
-                    direction += math.pi
-                elif dx < 0:
-                    direction += 2 * math.pi
             direction += rand.uniform(-math.pi/8, math.pi/8)
-            shot = Projectile(self.x,self.y,shotID,self.canvas,10,10,direction, speed=7)
+            shot = Projectile(self.x +12,self.y +12,shotID,self.canvas,10,10,direction, speed=0.7)
             mobs[shotID] = shot
-            self.shotCooldown = 200
+            self.shotCooldown = self.shotCooldownReset
         else:
             self.shotCooldown -=1
         
 class Player(Mobile):
     """This is the player class, which the user will control in this space fighter game.
     """
-    def __init__(self, x,y, imageID, canvas: Canvas, height, width, mobs : dict[int,Mobile], speed =5, health =3, isEnemy = False) -> None:
+    def __init__(self, x,y, imageID, canvas: Canvas, height, width, mobs : Dict[int,Mobile], speed =0.5, health =3, isEnemy = False) -> None:
         super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
         self.mobs = mobs
         
@@ -175,17 +208,8 @@ class Player(Mobile):
         y = self.y+10
         shotID = self.canvas.create_oval(x,y,x+10,y+10,fill="yellow")
         
-        dx = event.x - x
-        dy =  y - event.y # flipped around from the other one, to make it like a normal coordinate system
+        direction = calcDirection(x,y,event.x,event.y)
         
-        if(dy == 0):
-            direction = math.pi/2 + (((-sign(dx) + 1)/2) * math.pi) # This is here to avoid zero division errors.
-        else:
-            direction = math.atan(dx/dy)# this calculates the bearing based on the vector between the mouse click and the shot when it spawns
-            if dy < 0:
-                direction += math.pi
-            elif dx < 0:
-                direction += 2 * math.pi
         shot = Projectile(x,y,shotID,self.canvas,10,10,direction,mobs= self.mobs,isEnemy=False)
         self.mobs[shotID] = shot
     

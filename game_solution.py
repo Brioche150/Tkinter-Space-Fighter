@@ -2,9 +2,12 @@
 #Twitter: @_cluly_
 
 import math
+from random import randint
 from tkinter import Label, Tk, Canvas, PhotoImage, EventType
+import tkinter
 from PIL import Image, ImageTk
-from numpy import sign
+from typing import Dict
+from constants import tickDelay
 import mobiles
 
 def moveLeft(*ignore):
@@ -37,11 +40,25 @@ def flipPaused(*ignore):
     paused = not paused
     tick()
 
+def generateEnemies():
+    global enemySpawnCooldown
+    if enemySpawnCooldown >0:
+        enemySpawnCooldown -=1
+    else:
+        
+        enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
+        enemyY = randint(0,canvas.winfo_height())
+        enemyID = playerImageID = canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage)
+        enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,canvas,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
+        mobs[enemyID] = enemy
+        enemySpawnCooldown = enemySpawnReset
+
 def tick():
     global window
     if not paused:
+        generateEnemies()
         handleMobs()
-        window.after(10,tick)
+        window.after(tickDelay(),tick)
 
 def fire(event):
     global mobs
@@ -58,6 +75,16 @@ window.configure(bg="black")
 
 canvas = Canvas(window, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
 canvas.grid(column=3,row=1,rowspan=10)
+
+mobs :  Dict[int,mobiles.Mobile] = {} # This list is useful for keeping track of things that need to have the move function ran on them
+paused = True
+temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
+playerID = canvas.create_image(766,700,anchor="nw",image= temp)
+player = mobiles.Player(766,700,playerID,canvas,temp.height(),temp.width(),mobs)
+player = mobiles.Player(766,700,playerID,canvas, temp.height(), temp.width(),mobs)
+mobs[playerID] = player
+
+greenEnemyImage = enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
 
 verticalWall = Image.open("assets/Statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
@@ -89,10 +116,9 @@ botRight = PhotoImage(file="assets/Statics/bottomRightCorner.png")
 tempLabel = Label(window,image=botRight,borderwidth=0)
 tempLabel.grid(column=4,row=11,sticky="n")
 heart = PhotoImage(file="assets/Statics/heart.png")
-print(heart.height())
 heartLabel = Label(window,image=heart,borderwidth=0)
 heartLabel.grid(column=1,row=1)
-health = Label(window,text="x3",borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
+health = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
 health.grid(column=0,row=1)
 
 
@@ -102,46 +128,13 @@ health.grid(column=0,row=1)
 # crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
 
-# rightWall = PhotoImage(file="assets/Statics/rightWallPanel.png")
-
-
-# print(int(824 / leftWall.height()))
-# for i in range(1,int(int(canvas.cget('height')) / leftWall.height()) +1):
-#     tempLabel = Label(window,image=leftWall,borderwidth=0)
-#     tempLabel.grid(column=1,row=i)
-#     tempLabel = Label(window,image=rightWall,borderwidth=0)
-#     tempLabel.grid(column=3,row=i)
-
-
-# #canvas.pack(side="top")
-
-
-
-# #topLeftCorner = PhotoImage(file="assets/Statics/topLeftCorner.png") 
-# topLeftCorner=Image.open("assets/Statics/topLeftCorner.png")
-
- 
-# tempLabel = Label(window,image=PhotoImage(topLeftCorner),borderwidth=0)
-# tempLabel.grid(column=1,row=0)
-# tempLabel = Label(window,image=PhotoImage(topLeftCorner.rotate(270)),borderwidth=0)
-# tempLabel.grid(column=3,row=0)
-# tempLabel = Label(window,image=PhotoImage(topLeftCorner.rotate(180)),borderwidth=0)
-# tempLabel.grid(column=3,row=0)
 
 
 
 
-mobs : dict[int,mobiles.Mobile] = {} # This list is useful for keeping track of things that need to have the move function ran on them
-paused = True
-temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
-playerID = canvas.create_image(766,700,anchor="nw",image= temp)
-player = mobiles.Player(766,700,playerID,canvas, temp.height(), temp.width(),mobs)
-mobs[playerID] = player
 
-enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
-enemyID = playerImageID = canvas.create_image(1066,500,anchor="nw",image= enemyImage)
-enemy = mobiles.GruntEnemy(1066,500,enemyID,canvas,enemyImage.height(),enemyImage.width(),math.pi * 1.5)
-mobs[enemyID] = enemy
+enemySpawnCooldown = 1000 / tickDelay()
+enemySpawnReset = enemySpawnCooldown
 
 window.bind("a",moveLeft)
 window.bind("d",moveRight)
