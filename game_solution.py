@@ -24,12 +24,15 @@ def moveDown(*ignore):
     player.changeYSpeed(player.speed)
 
 def handleMobs():
-    global mobs
+    global mobs, score
     temp = mobs.copy()
     for ID in temp:
         mob = mobs[ID]
         mob.move()
         if mob.health <=0:
+            if isinstance(mob,mobiles.GruntEnemy):
+                score +=1
+                scoreLabel.config(text = "Score:\n" + str(score))
             canvas.delete(mob.imageID)
             mobs.pop(ID)
         if isinstance(mob,mobiles.GruntEnemy):
@@ -118,9 +121,11 @@ tempLabel.grid(column=4,row=11,sticky="n")
 heart = PhotoImage(file="assets/Statics/heart.png")
 heartLabel = Label(window,image=heart,borderwidth=0)
 heartLabel.grid(column=1,row=1)
-health = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
-health.grid(column=0,row=1)
-
+healthLabel = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
+healthLabel.grid(column=0,row=1)
+scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",25),bg="black",fg="white")
+scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
+player.healthLabel = healthLabel
 
 # test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
 # test = test.resize((500,200), Image.LANCZOS) # Not sure how needed LANCZOS is needed, but it's some form of antialias.
@@ -129,12 +134,9 @@ health.grid(column=0,row=1)
 #coordinates at the beginning are x then y
 
 
-
-
-
-
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
+score =0
 
 window.bind("a",moveLeft)
 window.bind("d",moveRight)

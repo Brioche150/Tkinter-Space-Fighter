@@ -1,6 +1,6 @@
 import math
 from string import hexdigits
-from tkinter import PhotoImage, Canvas
+from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
 from constants import tickDelay
@@ -133,12 +133,12 @@ class GruntEnemy(NPC):
     Args:
         NPC (_type_): _description_
     """
-    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =0.3, isEnemy = True, shotCooldown = 1000,turnCooldown = 1500) -> None:
+    def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =0.3, isEnemy = True, shotCooldown = 1000,turnCooldown = 1000) -> None:
         super().__init__(x,y,imageID, canvas, height, width,direction,speed,isEnemy)
-        self.shotCooldown = shotCooldown // tickDelay()
-        self.turnCooldown = turnCooldown // tickDelay()
-        self.shotCooldownReset = self.shotCooldown
-        self.turnCooldownReset = self.turnCooldown
+        self.shotCooldown = shotCooldown // tickDelay() 
+        self.turnCooldown = turnCooldown // (tickDelay() * 8) # This just makes them change direction quickly after they spawn
+        self.shotCooldownReset = self.shotCooldown   
+        self.turnCooldownReset = turnCooldown // tickDelay()
         self.isSteering = False # This will be used to put the enemy into a state where they "steer", so turn more gradually, rather than suddenly changing direction
         self.turnRate =0
     def move(self):
@@ -186,14 +186,17 @@ class Player(Mobile):
     def __init__(self, x,y, imageID, canvas: Canvas, height, width, mobs : Dict[int,Mobile], speed =0.5, health =3, isEnemy = False) -> None:
         super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
         self.mobs = mobs
+        self.healthLabel: Label = None 
         
     def move(self):
         super().move()
         IDs = self.canvas.find_overlapping(self.x,self.y,self.x+self.width,self.y+self.height)
         for ID in IDs:
-            if self.mobs[ID].isEnemy:
+            mob = self.mobs[ID]
+            if mob.isEnemy:
                 self.health -= 1
-                self.mobs[ID].health -=1
+                self.healthLabel.config(text = "X" + str(self.health))
+                mob.health -=1
                 print("Damage Taken! Health = " + str(self.health))
                 break # Break is here because otherwise the player could get damaged multiple times in a frame, which is unfun.
     
