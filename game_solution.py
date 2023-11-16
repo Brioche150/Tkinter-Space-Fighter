@@ -88,7 +88,7 @@ mobs[playerID] = player
 
 greenEnemyImage = enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
 
-verticalWall = Image.open("assets/Statics/bigLeftWall.png")
+verticalWall = Image.open("assets/statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
 leftWall = ImageTk.PhotoImage(verticalWall) # this extra line is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
 tempLabel = Label(window,image=leftWall,borderwidth=0)
@@ -97,7 +97,7 @@ rightWall = ImageTk.PhotoImage(verticalWall.rotate(180))
 tempLabel = Label(window,image=rightWall,borderwidth=0)
 tempLabel.grid(column=4,row=1,rowspan=10,sticky="e")
 
-horizontalWall = Image.open("assets/Statics/horizontalWall.png") # keeping the references to an image is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
+horizontalWall = Image.open("assets/statics/horizontalWall.png") # keeping the references to an image is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
 horizontalWall = horizontalWall.crop( (0, 0, int(canvas.cget('width')), horizontalWall.height) )
 horizontalWall = ImageTk.PhotoImage(horizontalWall)
 tempLabel = Label(window,image=horizontalWall,borderwidth=0)
@@ -105,26 +105,29 @@ tempLabel.grid(column=3,row=11,sticky="s")
 tempLabel = Label(window,image=horizontalWall,borderwidth=0)
 tempLabel.grid(column=3,row=0,sticky="n")
 
-topLeft = PhotoImage(file="assets/Statics/topLeftCorner.png")
+topLeft = PhotoImage(file="assets/statics/topLeftCorner.png")
 tempLabel = Label(window,image=topLeft,borderwidth=0)
 tempLabel.grid(column=2,row=0,sticky="s")
-topRight  = PhotoImage(file="assets/Statics/topRightCorner.png")
+topRight  = PhotoImage(file="assets/statics/topRightCorner.png")
 tempLabel = Label(window,image=topRight,borderwidth=0)
 tempLabel.grid(column=4,row=0,sticky="nw")
-botLeft  = PhotoImage(file="assets/Statics/bottomLeftCorner.png")
+botLeft  = PhotoImage(file="assets/statics/bottomLeftCorner.png")
 tempLabel = Label(window,image=botLeft,borderwidth=0)
 tempLabel.grid(column=2,row=11,sticky="sw")
-botRight = PhotoImage(file="assets/Statics/bottomRightCorner.png")
+botRight = PhotoImage(file="assets/statics/bottomRightCorner.png")
 tempLabel = Label(window,image=botRight,borderwidth=0)
 tempLabel.grid(column=4,row=11,sticky="n")
-heart = PhotoImage(file="assets/Statics/heart.png")
+heart = PhotoImage(file="assets/statics/heart.png")
 heartLabel = Label(window,image=heart,borderwidth=0)
 heartLabel.grid(column=1,row=1)
+
+#Fixedsys makes a cool pixel font in wondows, I can't find one for Linux though
 healthLabel = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
 healthLabel.grid(column=0,row=1)
 scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 player.healthLabel = healthLabel
+
 
 # test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
 # test = test.resize((500,200), Image.LANCZOS) # Not sure how needed LANCZOS is needed, but it's some form of antialias.

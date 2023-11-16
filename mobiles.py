@@ -154,6 +154,7 @@ class GruntEnemy(NPC):
         self.turnCooldownReset = turnCooldown // tickDelay()
         self.isSteering = False # This will be used to put the enemy into a state where they "steer", so turn more gradually, rather than suddenly changing direction
         self.turnRate =0
+    
     def move(self):
         super().move()
         if self.turnCooldown >0:
@@ -164,7 +165,7 @@ class GruntEnemy(NPC):
                 
         else:
             self.isSteering = False
-            if rand.randint(1,3) == 1: # Gives 1/3 chance of going into steering mode
+            if rand.randint(1,9) != 1: # Gives 1/3 chance of going into steering mode
                 self.turnCooldown = self.turnCooldownReset //3 # Makes it so that they don't spend ages turning
                 self.isSteering = True
                 self.turnRate = rand.uniform(-math.pi/(2*self.turnCooldown),math.pi / (2* self.turnCooldown))
