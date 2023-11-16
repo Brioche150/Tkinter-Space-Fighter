@@ -1,30 +1,28 @@
 #Sprites come from a free asset pack made by Cluly, found here https://cluly.itch.io/space-eaters
 #Twitter: @_cluly_
-
+"""This is the main game module that will handle the setup of the game, and keep running ticks to update the state of the game. 
+    """
 import math
 from random import randint
 from tkinter import Label, Tk, Canvas, PhotoImage, EventType
-import tkinter
 from PIL import Image, ImageTk
 from typing import Dict
 from constants import tickDelay
 import mobiles
 
 def moveLeft(*ignore):
-    global player
     player.changeXSpeed(-player.speed)
 def moveRight(*ignore):
-    global player
     player.changeXSpeed(player.speed)
 def moveUp(*ignore):
-    global player
     player.changeYSpeed(-player.speed)
 def moveDown(*ignore):
-    global player
     player.changeYSpeed(player.speed)
 
 def handleMobs():
-    global mobs, score
+    """This gets called with every tick, and it makes all of the mobs update their state as needed.
+    """
+    global score
     temp = mobs.copy()
     for ID in temp:
         mob = mobs[ID]
@@ -48,24 +46,23 @@ def generateEnemies():
     if enemySpawnCooldown >0:
         enemySpawnCooldown -=1
     else:
-        
         enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
         enemyY = randint(0,canvas.winfo_height())
-        enemyID = playerImageID = canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage)
+        enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage)
         enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,canvas,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
         mobs[enemyID] = enemy
         enemySpawnCooldown = enemySpawnReset
 
 def tick():
-    global window
+    """This is the key function that has to be called to allow the game to be played
+    """
     if not paused:
         generateEnemies()
         handleMobs()
         window.after(tickDelay(),tick)
 
 def fire(event):
-    global paused
-    if not paused:
+    if not paused and player.health >0:
         global mobs
         player.fire(event)
 
@@ -125,7 +122,7 @@ heartLabel = Label(window,image=heart,borderwidth=0)
 heartLabel.grid(column=1,row=1)
 healthLabel = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
 healthLabel.grid(column=0,row=1)
-scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",25),bg="black",fg="white")
+scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 player.healthLabel = healthLabel
 

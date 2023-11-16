@@ -4,7 +4,9 @@ from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
 from constants import tickDelay
-
+"""This module stores all of the classes that will be moving around during the game.
+This is basically all of the sprites moving around in the game.
+"""
 
 def keepInBounds(num,min,max):
         if num < min:
@@ -92,6 +94,17 @@ class NPC(Mobile):
     Args:
         Mobile (_type_): _description_
     """
+    def move(self):
+        super().move()
+        #This code basically makes NPCs bounce off of walls, so they don't get stuck on them.
+        if self.x == 0 or self.x == self.canvas.winfo_width() - self.width:
+            self.direction = (2* math.pi) - self.direction
+            self.updateSpeedsFromDirection()
+        
+        if self.y==0 or self.y == self.canvas.winfo_height() - self.height: 
+            self.direction = math.pi - self.direction
+            self.updateSpeedsFromDirection()
+    
     def __init__(self,x,y,imageID,canvas: Canvas,height,width, direction, speed =0.3,health=1,isEnemy = True) -> None:
         super().__init__(x,y,imageID, canvas, height, width,speed,health,isEnemy)
         self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
@@ -152,7 +165,7 @@ class GruntEnemy(NPC):
         else:
             self.isSteering = False
             if rand.randint(1,3) == 1: # Gives 1/3 chance of going into steering mode
-                self.turnCooldown = self.turnCooldownReset /5 # Makes it so that they don't spend ages turning
+                self.turnCooldown = self.turnCooldownReset //3 # Makes it so that they don't spend ages turning
                 self.isSteering = True
                 self.turnRate = rand.uniform(-math.pi/(2*self.turnCooldown),math.pi / (2* self.turnCooldown))
             else:
