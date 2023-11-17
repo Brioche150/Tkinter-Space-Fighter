@@ -7,7 +7,7 @@ from random import randint
 from tkinter import Label, Tk, Canvas, PhotoImage, EventType
 from PIL import Image, ImageTk
 from typing import Dict
-from constants import tickDelay
+from constants import tickDelay, window, canvas, mobs
 import mobiles
 
 def moveLeft(*ignore):
@@ -22,24 +22,36 @@ def moveDown(*ignore):
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
     """
-    global score
+    global score, paused
     temp = mobs.copy()
     for ID in temp:
-        mob = mobs[ID]
+        mob = temp[ID]
         mob.move()
-        if mob.health <=0:
-            if isinstance(mob,mobiles.GruntEnemy):
-                score +=1
-                scoreLabel.config(text = "Score:\n" + str(score))
-            canvas.delete(mob.imageID)
-            mobs.pop(ID)
+        # if mob.health <=0:
+        #     if isinstance(mob,mobiles.GruntEnemy):
+        #         score +=1
+        #         scoreLabel.config(text = "Score:\n" + str(score))
+        #     canvas.delete(mob.imageID)
+        #     mobs.pop(ID)
         if isinstance(mob,mobiles.GruntEnemy):
-            mob.fire(player.x,player.y,mobs)
+            mob.fire(player.x,player.y)
+        if player.health <=0:
+            paused = True
+            window.unbind("p")
 
-def flipPaused(*ignore):
+def pause(event):
     global paused
-    paused = not paused
-    tick()
+    if not paused:
+        paused = True
+        canvas.move(pauseMenu,-2000,0)
+        canvas.tag_raise(pauseMenu)
+
+def unpause(event):
+    global paused
+    if paused:
+        paused = False
+        canvas.move(pauseMenu,2000,0)
+        tick()
 
 def generateEnemies():
     global enemySpawnCooldown
@@ -49,7 +61,7 @@ def generateEnemies():
         enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
         enemyY = randint(0,canvas.winfo_height())
         enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage)
-        enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,canvas,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
+        enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
         mobs[enemyID] = enemy
         enemySpawnCooldown = enemySpawnReset
 
@@ -65,25 +77,44 @@ def fire(event):
     if not paused and player.health >0:
         global mobs
         player.fire(event)
+        
+        
+
+    
+def start(event):
+    window.unbind("KeyPress")
+    window.bind("a",moveLeft)
+    window.bind("d",moveRight)
+    window.bind("s",moveDown)
+    window.bind("w",moveUp)
+    window.bind("<KeyRelease-a>",moveRight)
+    window.bind("<KeyRelease-d>",moveLeft)
+    window.bind("<KeyRelease-s>",moveUp)
+    window.bind("<KeyRelease-w>",moveDown)
+    window.bind("<Button-1>",fire)
+    window.bind("p",pause)
+    startScreen.destroy()
+    startText.destroy()
+    
+    backgroundBlcok = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=(pauseMenu),outline="white")
+    resumeBlock = canvas.create_rectangle(canvas.winfo_width()//3 +10, 40, 2*(canvas.winfo_width()//3) -10,canvas.winfo_height()//3,fill="black",outline="white",tags=(pauseMenu,resume))
+    resumeHeight = canvas.winfo_height()//3 - 40
+    resumeWidth = (2*(canvas.winfo_width()//3) -10) - (canvas.winfo_width()//3 +10)
+    resumeText = canvas.create_text(canvas.winfo_width()//3 +10 + resumeWidth//2, 40 + resumeHeight//2,tags=(pauseMenu,resume),text="Resume",font="Fixedsys 36",fill="white")
+    canvas.tag_raise(pauseMenu)
+    canvas.tag_raise(resumeText)
+    canvas.tag_bind(resume,"<Button-1>",unpause)
+
+window = window()
+canvas = canvas()
 
 
-window = Tk()
-window.title("Space-Fighter")
-window.geometry("1536x864")
-window.configure(bg="black")
-
-
-
-
-canvas = Canvas(window, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
-canvas.grid(column=3,row=1,rowspan=10)
-
-mobs :  Dict[int,mobiles.Mobile] = {} # This list is useful for keeping track of things that need to have the move function ran on them
+mobs : Dict[int, mobiles.Mobile]= mobs() # This list is useful for keeping track of things that need to have the move function ran on them
 paused = True
-temp = PhotoImage(file="assets/player/player.png") # for some reason I can't just pass it into rhe create_image method
-playerID = canvas.create_image(766,700,anchor="nw",image= temp)
-player = mobiles.Player(766,700,playerID,canvas,temp.height(),temp.width(),mobs)
-player = mobiles.Player(766,700,playerID,canvas, temp.height(), temp.width(),mobs)
+playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
+playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
+player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
+player = mobiles.Player(766,700,playerID, playerImage.height(), playerImage.width())
 mobs[playerID] = player
 
 greenEnemyImage = enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
@@ -127,6 +158,10 @@ healthLabel.grid(column=0,row=1)
 scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 player.healthLabel = healthLabel
+player.scoreLabel = scoreLabel
+
+
+
 
 
 # test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
@@ -136,19 +171,21 @@ player.healthLabel = healthLabel
 #coordinates at the beginning are x then y
 
 
+#This are the pause menu items
+
+pauseMenu = "pauseMenu"
+resume = "resume"
+
+
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
 score =0
 
-window.bind("a",moveLeft)
-window.bind("d",moveRight)
-window.bind("s",moveDown)
-window.bind("w",moveUp)
-window.bind("<KeyRelease-a>",moveRight)
-window.bind("<KeyRelease-d>",moveLeft)
-window.bind("<KeyRelease-s>",moveUp)
-window.bind("<KeyRelease-w>",moveDown)
-window.bind("<Button-1>",fire)
-window.bind("p",flipPaused)
 
+window.bind("<KeyPress>",start)
+
+startScreen = Label(window,borderwidth=999,bg="black")
+startScreen.place(x=1536//2,y=864//2,anchor="center")
+startText = Label(window,text="Press any button to start" ,font=("Fixedsys",50),borderwidth=20,bg="black",fg="white")
+startText.place(x=1536//2,y=864//2,anchor="center")
 window.mainloop()

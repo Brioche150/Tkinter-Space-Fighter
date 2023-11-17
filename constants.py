@@ -1,4 +1,26 @@
 """This module will just store constants that I have to keep across the game
 """
-def tickDelay():
+
+from tkinter import Canvas, Tk
+
+def tickDelay(): # This should be used for anything that ou want to keep consistent with timings. So that's things like cooldowns, movement speed, etc
     return 10
+
+def window():
+    return myWindow
+
+def canvas():
+    return myCanvas
+def mobs():
+    return myMobs
+
+myWindow = Tk()
+myWindow.title("Space-Fighter")
+myWindow.geometry("1536x864")
+myWindow.configure(bg="black")
+    
+myCanvas = Canvas(myWindow, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
+myCanvas.grid(column=3,row=1,rowspan=10)
+myMobs = {}
+
+
