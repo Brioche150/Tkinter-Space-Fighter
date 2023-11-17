@@ -35,9 +35,9 @@ def handleMobs():
         #     mobs.pop(ID)
         if isinstance(mob,mobiles.GruntEnemy):
             mob.fire(player.x,player.y)
-        if player.health <=0:
-            paused = True
-            window.unbind("p")
+    if player.health <=0:
+        paused = True
+        window.unbind_all("p") #Normal unbind requires you to pass a functionID as well, but I'll only ever have one function bound to this anyway. May need it for mouse clicks though
 
 def pause(event):
     global paused
@@ -77,9 +77,32 @@ def fire(event):
     if not paused and player.health >0:
         global mobs
         player.fire(event)
-        
-        
 
+def removeLeaderboard(event):
+    canvas.delete(leaderboard)
+
+def showLeaderboard(event):
+    #This generates a new leaderboard every time because it could change, I can't just move it off screen
+    scoreRead = open("leaderboard.txt", "r")
+    scoreString =""
+    for line in scoreRead:
+        scoreString += line
+    
+    #This code generates the text, and then generates outlines that go around the text using bounding boxes.
+    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white",tags=("leaderboardContent",leaderboard)) 
+    scoresBBox = canvas.bbox(scores)
+    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboard,"exitLeaderboard"))
+    exitBBox = canvas.bbox(leaderboardExit)
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboard,"exitLeaderboard"))
+    overallBBox = canvas.bbox(leaderboardExit,scores)
+    
+    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboard))
+    
+    canvas.tag_raise(exitOutline,overallOutline)
+    canvas.tag_raise("leaderboardContent","outline") # the way raise and lower work is that it raises the first thing, over the second thing given
+    canvas.tag_bind("exitLeaderboard","<Button-1>",removeLeaderboard)
+    scoreRead.close()
+    
     
 def start(event):
     window.unbind("KeyPress")
@@ -96,14 +119,29 @@ def start(event):
     startScreen.destroy()
     startText.destroy()
     
-    backgroundBlcok = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=(pauseMenu),outline="white")
-    resumeBlock = canvas.create_rectangle(canvas.winfo_width()//3 +10, 40, 2*(canvas.winfo_width()//3) -10,canvas.winfo_height()//3,fill="black",outline="white",tags=(pauseMenu,resume))
-    resumeHeight = canvas.winfo_height()//3 - 40
-    resumeWidth = (2*(canvas.winfo_width()//3) -10) - (canvas.winfo_width()//3 +10)
-    resumeText = canvas.create_text(canvas.winfo_width()//3 +10 + resumeWidth//2, 40 + resumeHeight//2,tags=(pauseMenu,resume),text="Resume",font="Fixedsys 36",fill="white")
+    backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=(pauseMenu),outline="white")
+    
+    startX = canvas.winfo_width()//3 +10
+    startY = 40
+    
+    blockHeight = canvas.winfo_height()//3 - 40
+    blockWidth = canvas.winfo_width()//3 - 20
+    
+    resumeBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenu,resume))
+    resumeText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenu,resume),text="Resume",font="Fixedsys 36",fill="white")
+    startY += blockHeight 
+    
+    leaderboardBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenu,leaderboardButton))
+    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenu,leaderboardButton),text="leaderboard",font="Fixedsys 36",fill="white")
+    startY += blockHeight
+    
+    
+    
+    
     canvas.tag_raise(pauseMenu)
-    canvas.tag_raise(resumeText)
+    canvas.tag_raise(resumeText,leaderboardButton)
     canvas.tag_bind(resume,"<Button-1>",unpause)
+    canvas.tag_bind(leaderboardButton,"<Button-1>",showLeaderboard)
 
 window = window()
 canvas = canvas()
@@ -170,12 +208,10 @@ player.scoreLabel = scoreLabel
 # crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
 
-
-#This are the pause menu items
-
 pauseMenu = "pauseMenu"
 resume = "resume"
-
+leaderboardButton= "leaderboardButton"
+leaderboard = "leaderboard"
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
