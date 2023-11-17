@@ -43,14 +43,13 @@ def pause(event):
     global paused
     if not paused:
         paused = True
-        canvas.move(pauseMenu,-2000,0)
-        canvas.tag_raise(pauseMenu)
+        canvas.tag_raise(pauseMenuTag)
 
 def unpause(event):
     global paused
     if paused:
         paused = False
-        canvas.move(pauseMenu,2000,0)
+        canvas.tag_lower(pauseMenuTag)
         tick()
 
 def generateEnemies():
@@ -71,6 +70,9 @@ def tick():
     if not paused:
         generateEnemies()
         handleMobs()
+        canvas.move(background,-1,0) # Makes a cool scrolling effect. 
+        if canvas.coords(background)[0] + backgroundImage.width() < canvas.winfo_width(): # This sets the background back to the beginning if it's scrolled too far
+            canvas.moveto(background,0,0) 
         window.after(tickDelay(),tick)
 
 def fire(event):
@@ -79,7 +81,7 @@ def fire(event):
         player.fire(event)
 
 def removeLeaderboard(event):
-    canvas.delete(leaderboard)
+    canvas.delete(leaderboardTag)
 
 def showLeaderboard(event):
     #This generates a new leaderboard every time because it could change, I can't just move it off screen
@@ -89,14 +91,14 @@ def showLeaderboard(event):
         scoreString += line
     
     #This code generates the text, and then generates outlines that go around the text using bounding boxes.
-    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white",tags=("leaderboardContent",leaderboard)) 
+    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white",tags=("leaderboardContent",leaderboardTag,pauseMenuTag)) 
     scoresBBox = canvas.bbox(scores)
-    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboard,"exitLeaderboard"))
+    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboardTag,"exitLeaderboard",pauseMenuTag))
     exitBBox = canvas.bbox(leaderboardExit)
-    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboard,"exitLeaderboard"))
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboardTag,"exitLeaderboard",pauseMenuTag))
     overallBBox = canvas.bbox(leaderboardExit,scores)
     
-    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboard))
+    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboardTag,pauseMenuTag))
     
     canvas.tag_raise(exitOutline,overallOutline)
     canvas.tag_raise("leaderboardContent","outline") # the way raise and lower work is that it raises the first thing, over the second thing given
@@ -119,7 +121,7 @@ def start(event):
     startScreen.destroy()
     startText.destroy()
     
-    backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=(pauseMenu),outline="white")
+    backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=pauseMenuTag,outline="white")
     
     startX = canvas.winfo_width()//3 +10
     startY = 40
@@ -127,25 +129,28 @@ def start(event):
     blockHeight = canvas.winfo_height()//3 - 40
     blockWidth = canvas.winfo_width()//3 - 20
     
-    resumeBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenu,resume))
-    resumeText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenu,resume),text="Resume",font="Fixedsys 36",fill="white")
+    resumeBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,resumeTag))
+    resumeText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,resumeTag),text="Resume",font="Fixedsys 36",fill="white")
     startY += blockHeight 
     
-    leaderboardBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenu,leaderboardButton))
-    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenu,leaderboardButton),text="leaderboard",font="Fixedsys 36",fill="white")
+    leaderboardBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,leaderboardButtonTag))
+    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,leaderboardButtonTag),text="leaderboard",font="Fixedsys 36",fill="white")
     startY += blockHeight
     
     
     
     
-    canvas.tag_raise(pauseMenu)
-    canvas.tag_raise(resumeText,leaderboardButton)
-    canvas.tag_bind(resume,"<Button-1>",unpause)
-    canvas.tag_bind(leaderboardButton,"<Button-1>",showLeaderboard)
+    canvas.tag_raise(pauseMenuTag)
+    canvas.tag_raise(resumeText,leaderboardButtonTag)
+    canvas.tag_bind(resumeTag,"<Button-1>",unpause)
+    canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
 
 window = window()
 canvas = canvas()
 
+backgroundImage = PhotoImage(file="assets/background.png")
+background = canvas.create_image(0,0,anchor="nw",image= backgroundImage)
+canvas.tag_lower(background)
 
 mobs : Dict[int, mobiles.Mobile]= mobs() # This list is useful for keeping track of things that need to have the move function ran on them
 paused = True
@@ -208,10 +213,10 @@ player.scoreLabel = scoreLabel
 # crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
 
-pauseMenu = "pauseMenu"
-resume = "resume"
-leaderboardButton= "leaderboardButton"
-leaderboard = "leaderboard"
+pauseMenuTag = "pauseMenu"
+resumeTag = "resume"
+leaderboardButtonTag= "leaderboardButton"
+leaderboardTag = "leaderboard"
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
