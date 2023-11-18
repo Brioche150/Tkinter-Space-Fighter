@@ -38,7 +38,7 @@ def handleMobs():
     if player.health <=0:
         paused = True
         window.unbind_all("p") #Normal unbind requires you to pass a functionID as well, but I'll only ever have one function bound to this anyway. May need it for mouse clicks though
-
+        
 def pause(event):
     global paused
     if not paused:
@@ -105,26 +105,24 @@ def showLeaderboard(event):
     canvas.tag_bind("exitLeaderboard","<Button-1>",removeLeaderboard)
     scoreRead.close()
 
-def dropPauseMenu(event): # This function exists because of some weird thing makes it so that when escape is pressed, the pause menu just goes in front of every other canvas element
-    if not paused:
-        canvas.tag_lower(pauseMenuTag)
 
-    
 def start(event):
-    window.unbind("KeyPress")
-    window.bind("a",moveLeft)
-    window.bind("d",moveRight)
-    window.bind("s",moveDown)
-    window.bind("w",moveUp)
-    window.bind("<KeyRelease-a>",moveRight)
-    window.bind("<KeyRelease-d>",moveLeft)
-    window.bind("<KeyRelease-s>",moveUp)
-    window.bind("<KeyRelease-w>",moveDown)
-    window.bind("<Button-1>",fire)
-    window.bind("p",pause)
-    window.bind("<Escape>",dropPauseMenu) # This is here because escape just breaks canvas layers. Maybe it canvas objects in the order they're created?
+    window.unbind("<KeyRelease>")
+    window.bind("a",moveLeft,add=True)
+    window.bind("d",moveRight,add=True)
+    window.bind("s",moveDown,add=True)
+    window.bind("w",moveUp,add=True)
+    window.bind("<KeyRelease-a>",moveRight,add=True)
+    window.bind("<KeyRelease-d>",moveLeft,add=True)
+    window.bind("<KeyRelease-s>",moveUp,add=True)
+    window.bind("<KeyRelease-w>",moveDown,add=True)
+    window.bind("<Button-1>",fire,add=True)
+    window.bind("p",pause,add=True)
+    
     startScreen.destroy()
     startText.destroy()
+    
+    
     
     backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=pauseMenuTag,outline="white")
     
@@ -228,10 +226,12 @@ enemySpawnReset = enemySpawnCooldown
 score =0
 
 
-window.bind("<KeyPress>",start)
+window.bind("<KeyRelease>",start,add=True) # Bit of cheating here, because otherwise there's issues of using a movement key making you start off moving in the wrong direction because of the keyrelease code.
+
+
 
 startScreen = Label(window,borderwidth=999,bg="black")
 startScreen.place(x=1536//2,y=864//2,anchor="center")
-startText = Label(window,text="Press any button to start" ,font=("Fixedsys",50),borderwidth=20,bg="black",fg="white")
+startText = Label(window,text="Press any key to start" ,font=("Fixedsys",50),borderwidth=20,bg="black",fg="white")
 startText.place(x=1536//2,y=864//2,anchor="center")
 window.mainloop()
