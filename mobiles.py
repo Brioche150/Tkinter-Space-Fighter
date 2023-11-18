@@ -207,7 +207,8 @@ class Projectile(NPC):
         if self.x == canvas().winfo_width() - self.width or self.x == 0 or self.y == canvas().winfo_height() -self.height or self.y == 0:
             self.health =0
             canvas().delete(self.imageID)
-            mobs().pop(self.imageID)
+            if self.imageID in mobs(): # The if is in an edge case where a projectile is deleted for hitting the wall at the same time as hitting an enemy/player
+                mobs().pop(self.imageID) 
         
 
 class GruntEnemy(NPC):

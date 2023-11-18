@@ -120,9 +120,11 @@ def tick():
     if not paused:
         generateEnemies()
         handleMobs()
-        canvas.move(background,-1,0) # Makes a cool scrolling effect. 
-        if canvas.coords(background)[0] + backgroundImage.width() < canvas.winfo_width(): # This sets the background back to the beginning if it's scrolled too far
-            canvas.moveto(background,0,0) #Maybe I can do some trickery of adding a mirrored version on the end, and changing the image subtly.
+        if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
+            canvas.moveto(background,0,0)
+        else:
+            canvas.move(background,-1,0)# Makes a cool scrolling effect. 
+        
         window.after(tickDelay(),tick)
 
 def fire(event):
@@ -191,8 +193,6 @@ def startGame(event):
     unpause()
 
 def start(event):
-    
-    
     
     startScreen.destroy()
     startText.destroy()
