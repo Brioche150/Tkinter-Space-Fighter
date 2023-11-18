@@ -72,7 +72,7 @@ def tick():
         handleMobs()
         canvas.move(background,-1,0) # Makes a cool scrolling effect. 
         if canvas.coords(background)[0] + backgroundImage.width() < canvas.winfo_width(): # This sets the background back to the beginning if it's scrolled too far
-            canvas.moveto(background,0,0) 
+            canvas.moveto(background,0,0) #Maybe I can do some trickery of adding a mirrored version on the end, and changing the image subtly.
         window.after(tickDelay(),tick)
 
 def fire(event):
@@ -104,7 +104,11 @@ def showLeaderboard(event):
     canvas.tag_raise("leaderboardContent","outline") # the way raise and lower work is that it raises the first thing, over the second thing given
     canvas.tag_bind("exitLeaderboard","<Button-1>",removeLeaderboard)
     scoreRead.close()
-    
+
+def dropPauseMenu(event): # This function exists because of some weird thing makes it so that when escape is pressed, the pause menu just goes in front of every other canvas element
+    if not paused:
+        canvas.tag_lower(pauseMenuTag)
+
     
 def start(event):
     window.unbind("KeyPress")
@@ -118,6 +122,7 @@ def start(event):
     window.bind("<KeyRelease-w>",moveDown)
     window.bind("<Button-1>",fire)
     window.bind("p",pause)
+    window.bind("<Escape>",dropPauseMenu) # This is here because escape just breaks canvas layers. Maybe it canvas objects in the order they're created?
     startScreen.destroy()
     startText.destroy()
     
