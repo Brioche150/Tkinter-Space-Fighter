@@ -4,7 +4,8 @@
     """
 import math
 from random import randint
-from tkinter import Label, Tk, Canvas, PhotoImage, EventType
+from textwrap import fill
+from tkinter import END, Button, Entry, Label, Tk, Canvas, PhotoImage, EventType
 from PIL import Image, ImageTk
 from typing import Dict
 from constants import tickDelay, window, canvas, mobs
@@ -18,6 +19,54 @@ def moveUp(*ignore):
     player.changeYSpeed(-player.speed)
 def moveDown(*ignore):
     player.changeYSpeed(player.speed)
+
+def submit():
+    name = entry.get()[:3].upper() # First three letters that the user enters
+    with open("leaderboard.txt") as file:
+        leaderboardString = ""
+        for line in file:
+            score = int(line.split(" ")[1]) # This gets the score, since the score comes after a space
+            if player.score > score:
+                
+                dotIndex = line.find(".")
+                newLine = line[:dotIndex + 1] # This copies the number into the new line
+                newLine += name
+                newLine += " " * (3-len(name)) #Makes sure that 3 character's space is used up if their name is less than 3 letters
+                newLine += ": " + str(player.score) + "\n"
+                
+                leaderboardString += newLine
+                player.score=score # This makes it step through and act like the person that just got removed just got that score, so cascades down the list
+                name = line[dotIndex+1:dotIndex +4]
+            else:
+                leaderboardString += line
+    with open("leaderboard.txt","w") as file:
+        file.write(leaderboardString)
+    
+    
+    
+    canvas.delete(GOWindowTag)
+    canvas.tag_lower(gameOverTag)
+    canvas.tag_raise(pauseMenuTag)
+    canvas.tag_raise(startTag,resumeTag)
+    
+    
+def gameOver():
+    
+    #all these unbinds are to get rid of the erorrs of "there is no instance of player" when it doesn't really matter either way.
+    window.unbind("a")
+    window.unbind("d")
+    window.unbind("s")
+    window.unbind("w")
+    window.unbind("<KeyRelease-a>")
+    window.unbind("<KeyRelease-d>")
+    window.unbind("<KeyRelease-s>")
+    window.unbind("<KeyRelease-w>")
+    window.unbind("<Button-1>")
+    
+    entry.delete(0,END)
+    canvas.create_window(canvas.winfo_width()//2,240,window = entry,tags=(gameOverTag,GOWindowTag))
+    canvas.create_window(canvas.winfo_width()//2,320,window=buttonSubmit,tags=(gameOverTag,GOWindowTag))
+    canvas.tag_raise(gameOverTag)
 
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
@@ -37,15 +86,16 @@ def handleMobs():
             mob.fire(player.x,player.y)
     if player.health <=0:
         paused = True
-        window.unbind_all("p") #Normal unbind requires you to pass a functionID as well, but I'll only ever have one function bound to this anyway. May need it for mouse clicks though
+        window.unbind("p")
+        gameOver()
         
-def pause(event):
+def pause(*ignore):
     global paused
     if not paused:
         paused = True
         canvas.tag_raise(pauseMenuTag)
 
-def unpause(event):
+def unpause(*ignore):
     global paused
     if paused:
         paused = False
@@ -91,7 +141,7 @@ def showLeaderboard(event):
         scoreString += line
     
     #This code generates the text, and then generates outlines that go around the text using bounding boxes.
-    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white",tags=("leaderboardContent",leaderboardTag,pauseMenuTag)) 
+    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white", tags=("leaderboardContent",leaderboardTag,pauseMenuTag)) 
     scoresBBox = canvas.bbox(scores)
     leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboardTag,"exitLeaderboard",pauseMenuTag))
     exitBBox = canvas.bbox(leaderboardExit)
@@ -105,24 +155,50 @@ def showLeaderboard(event):
     canvas.tag_bind("exitLeaderboard","<Button-1>",removeLeaderboard)
     scoreRead.close()
 
+def startGame(event):
+    """This function will reset the game to be played again, or just for the first time
+    """
+    
+    window.unbind("<KeyRelease>")
+    window.bind("a",moveLeft )
+    window.bind("d",moveRight )
+    window.bind("s",moveDown )
+    window.bind("w",moveUp )
+    window.bind("<KeyRelease-a>",moveRight ) # Currently an issue if someone holds multiple movement keys on the start screen
+    window.bind("<KeyRelease-d>",moveLeft )
+    window.bind("<KeyRelease-s>",moveUp )
+    window.bind("<KeyRelease-w>",moveDown )
+    window.bind("<Button-1>",fire)
+    
+    for ID in mobs: #Just clears out all of the enemies on the canvas
+        canvas.delete(ID)
+    mobs.clear()
+    global playerID, player,paused,enemySpawnCooldown,enemySpawnReset
+    
+    enemySpawnCooldown = 1000 / tickDelay()
+    enemySpawnReset = enemySpawnCooldown
+    
+    playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
+    player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
+    mobs[playerID] = player
+    
+    healthLabel.config(text="x" + str(player.health))
+    scoreLabel.config(text="Score:\n0")
+    player.healthLabel = healthLabel
+    player.scoreLabel = scoreLabel
+    window.bind("p",pause)
+    canvas.tag_raise(resumeTag,startTag)
+    unpause()
 
 def start(event):
-    window.unbind("<KeyRelease>")
-    window.bind("a",moveLeft,add=True)
-    window.bind("d",moveRight,add=True)
-    window.bind("s",moveDown,add=True)
-    window.bind("w",moveUp,add=True)
-    window.bind("<KeyRelease-a>",moveRight,add=True)
-    window.bind("<KeyRelease-d>",moveLeft,add=True)
-    window.bind("<KeyRelease-s>",moveUp,add=True)
-    window.bind("<KeyRelease-w>",moveDown,add=True)
-    window.bind("<Button-1>",fire,add=True)
-    window.bind("p",pause,add=True)
+    
+    
     
     startScreen.destroy()
     startText.destroy()
     
-    
+    #This will make a start/pause menu, since they have elements in common. So on top, there's a start / resume button for the start and pause menu respectively
+    #Then there's the leaderboard, which is the same for both.
     
     backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=pauseMenuTag,outline="white")
     
@@ -132,20 +208,32 @@ def start(event):
     blockHeight = canvas.winfo_height()//3 - 40
     blockWidth = canvas.winfo_width()//3 - 20
     
-    resumeBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,resumeTag))
-    resumeText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,resumeTag),text="Resume",font="Fixedsys 36",fill="white")
+    #These make the resume block
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,resumeTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Resume",font="Fixedsys 32",fill="white",tags=(pauseMenuTag,resumeTag))
+    
+    #These make the start block, in the same place, since one will just be in front of the other
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,startTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Start New Game",font="Fixedsys 32",fill="white",tags=(pauseMenuTag,startTag))
+    
     startY += blockHeight 
     
     leaderboardBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,leaderboardButtonTag))
-    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,leaderboardButtonTag),text="leaderboard",font="Fixedsys 36",fill="white")
+    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,leaderboardButtonTag),text="leaderboard",font="Fixedsys 32",fill="white")
     startY += blockHeight
     
+    #Making the game over block
+    canvas.create_rectangle(canvas.winfo_width()//4,40,3* canvas.winfo_width()//4,canvas.winfo_height() -40,fill="black",outline="white",tags=gameOverTag)
+    canvas.create_text(canvas.winfo_width()//2,90,text="Game Over!",font= "Fixedsys 48",fill="white",tags=gameOverTag)
+    canvas.create_text(canvas.winfo_width()//2,160,text="Name (Three letters) ",font= "Fixedsys 32",fill="white",tags=gameOverTag)
+    #There are windows made after this, but they have to keep getting deleted and remade in the game over code, because they go in front of everything
     
-    
+    canvas.tag_lower(gameOverTag)
     
     canvas.tag_raise(pauseMenuTag)
-    canvas.tag_raise(resumeText,leaderboardButtonTag)
+    canvas.tag_raise(startTag,resumeTag)
     canvas.tag_bind(resumeTag,"<Button-1>",unpause)
+    canvas.tag_bind(startTag,"<Button-1>",startGame)
     canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
 
 window = window()
@@ -156,14 +244,18 @@ background = canvas.create_image(0,0,anchor="nw",image= backgroundImage)
 canvas.tag_lower(background)
 
 mobs : Dict[int, mobiles.Mobile]= mobs() # This list is useful for keeping track of things that need to have the move function ran on them
-paused = True
 playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
-playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
-player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
-player = mobiles.Player(766,700,playerID, playerImage.height(), playerImage.width())
-mobs[playerID] = player
+paused = True
 
-greenEnemyImage = enemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
+playerID : int
+player : mobiles.Player
+
+# playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
+# playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
+# player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
+# mobs[playerID] = player
+
+greenEnemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
 
 verticalWall = Image.open("assets/statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
@@ -199,12 +291,11 @@ heartLabel = Label(window,image=heart,borderwidth=0)
 heartLabel.grid(column=1,row=1)
 
 #Fixedsys makes a cool pixel font in wondows, I can't find one for Linux though
-healthLabel = Label(window,text="x" + str(player.health),borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
+healthLabel = Label(window,borderwidth=0,font=("Fixedsys",26),bg="black",fg="white")
 healthLabel.grid(column=0,row=1)
-scoreLabel =Label(window,text="Score:\n0",borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
+scoreLabel =Label(window,borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
-player.healthLabel = healthLabel
-player.scoreLabel = scoreLabel
+
 
 
 
@@ -220,13 +311,21 @@ pauseMenuTag = "pauseMenu"
 resumeTag = "resume"
 leaderboardButtonTag= "leaderboardButton"
 leaderboardTag = "leaderboard"
+startTag = "start"
+gameOverTag = "gameOver"
+GOWindowTag = "GameOverWindowTag"
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
 score =0
 
+#Making the gameOver elements
+entry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
+buttonSubmit = Button(window,command=submit,text="submit",bg="black",font=("Fixedsys",32),fg="white")
 
-window.bind("<KeyRelease>",start,add=True) # Bit of cheating here, because otherwise there's issues of using a movement key making you start off moving in the wrong direction because of the keyrelease code.
+
+
+window.bind("<KeyRelease>",start) # Bit of cheating here, because otherwise there's issues of using a movement key making you start off moving in the wrong direction because of the keyrelease code.
 
 
 
