@@ -100,9 +100,13 @@ def pause(*ignore):
         canvas.tag_raise(onlyPausedTag)
 
 def countdown(countdownID,num):
+    global paused
     canvas.delete(countdownID)
-    if num==1:
-        global paused
+    if bossShown: # Edge case where if the boss key is pressed during the countdown, it won't pause
+        paused = False
+        pause()
+    elif num==1:
+        
         paused = False
         tick()
     else:
@@ -141,6 +145,18 @@ def tick():
             canvas.move(background,-1,0)# Makes a cool scrolling effect. 
         
         window.after(tickDelay(),tick)
+
+def bossToggle(event):
+    global bossShown
+    if not bossShown:
+        global paused
+        if not paused:
+            pause(event)
+        bossLabel.grid(row=0,column=0)
+        bossShown = True
+    else:
+        bossLabel.grid_forget()
+        bossShown = False
 
 def fire(event):
     if not paused and player.health >0:
@@ -275,7 +291,7 @@ def startGame(event):
 def start(event):
     """This function could all be put in main, except the canvas dimensions wouldn't exist then, so it has to be in a function after an event has happened and the mainloop has given the canvas dimensions.
     """
-    
+    window.bind("b",bossToggle)
     startScreen.destroy()
     startText.destroy()
     
@@ -348,17 +364,16 @@ canvas.tag_lower(background)
 mobs : Dict[int, mobiles.Mobile]= mobs() # This list is useful for keeping track of things that need to have the move function ran on them
 playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
 paused = True
+bossShown = False
 
 playerID : int
 player : mobiles.Player
 
-# playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
-# playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
-# player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
-# mobs[playerID] = player
+
+bossImage = PhotoImage(file="assets/bossImage.png")
+bossLabel = Label(window,image=bossImage,borderwidth=0)
 
 greenEnemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
-
 verticalWall = Image.open("assets/statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
 leftWall = ImageTk.PhotoImage(verticalWall) # this extra line is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection
