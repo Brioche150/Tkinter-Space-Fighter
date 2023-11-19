@@ -13,6 +13,8 @@ def canvas():
     return myCanvas
 def mobs():
     return myMobs
+def mobileTag():
+    return "mobileTag"
 
 myWindow = Tk()
 myWindow.title("Space-Fighter")

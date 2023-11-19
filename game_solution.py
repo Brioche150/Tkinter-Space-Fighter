@@ -1,14 +1,16 @@
 #Sprites come from a free asset pack made by Cluly, found here https://cluly.itch.io/space-eaters
 #Twitter: @_cluly_
 """This is the main game module that will handle the setup of the game, and keep running ticks to update the state of the game. 
+    Screen resolution is 1536 x 864
     """
+import json
 import math
 from random import randint
 from textwrap import fill
 from tkinter import END, Button, Entry, Label, Tk, Canvas, PhotoImage, EventType
 from PIL import Image, ImageTk
 from typing import Dict
-from constants import tickDelay, window, canvas, mobs
+from constants import tickDelay, window, canvas, mobs, mobileTag
 import mobiles
 
 def moveLeft(*ignore):
@@ -46,8 +48,9 @@ def submit():
     
     canvas.delete(GOWindowTag)
     canvas.tag_lower(gameOverTag)
-    canvas.tag_raise(pauseMenuTag)
+    canvas.tag_raise(menuTag)
     canvas.tag_raise(startTag,resumeTag)
+    canvas.tag_lower(onlyPausedTag)
     
     
 def gameOver():
@@ -93,13 +96,14 @@ def pause(*ignore):
     global paused
     if not paused:
         paused = True
-        canvas.tag_raise(pauseMenuTag)
+        canvas.tag_raise(menuTag)
+        canvas.tag_raise(onlyPausedTag)
 
 def unpause(*ignore):
     global paused
     if paused:
         paused = False
-        canvas.tag_lower(pauseMenuTag)
+        canvas.tag_lower(menuTag)
         tick()
 
 def generateEnemies():
@@ -109,7 +113,7 @@ def generateEnemies():
     else:
         enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
         enemyY = randint(0,canvas.winfo_height())
-        enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage)
+        enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage,tags=mobileTag())
         enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
         mobs[enemyID] = enemy
         enemySpawnCooldown = enemySpawnReset
@@ -132,8 +136,68 @@ def fire(event):
         global mobs
         player.fire(event)
 
+def saveGame(event):
+    dictList = []
+    for ID in mobs:
+        mob = mobs[ID]
+        mobInfo = {}
+        mobInfo["type"] = str(type(mob))
+        mobInfo.update(mob.__dict__)
+        if "Player" in mobInfo["type"]: # This makes sure player is saved first, so that projectiles can have their player attribute set correctly.
+            dictList.insert(0,mobInfo)
+        else:
+            dictList.append(mobInfo)
+        
+    with open("gameSave.txt","w") as file:
+        file.write(json.dumps(dictList,default= lambda obj: None))
+
+def loadGame(event):
+    with open("gameSave.txt","r") as file:   
+        fileContents = file.read()
+        if len(fileContents) ==0:
+            startGame(event)
+            print("There is no game save to be loaded")
+        else:
+            for ID in mobs: #Just clears out all of the enemies on the canvas
+                canvas.delete(ID)
+            mobs.clear()
+            global playerID, player,paused,enemySpawnCooldown,enemySpawnReset
+            
+            enemySpawnCooldown = 1000 / tickDelay()
+            enemySpawnReset = enemySpawnCooldown
+            
+            dictList = json.loads(fileContents) # Making my classes serializable would make this a good bit easier, but I'm not sure how to do that.
+            for dict in dictList:
+                type = dict["type"]
+                if "Player" in type:
+                    playerID = canvas.create_image(dict["x"],dict["y"], anchor="nw",image= playerImage,tags=mobileTag())
+                    player = mobiles.Player(dict["x"],dict["y"],playerID,dict["height"],dict["width"],dict["speed"],dict["health"],dict["score"])
+                    mobs[playerID] = player
+                elif "Projectile" in type:
+                    projectileID = canvas.create_oval(dict["x"],dict["y"],dict["x"]+dict["width"],dict["y"]+dict["height"], fill=dict["colour"],tags = mobileTag())
+                    projectile = mobiles.Projectile(dict["x"],dict["y"],projectileID,dict["height"],dict["width"],dict["direction"],speed=dict["speed"],health=dict["health"],isEnemy=dict["isEnemy"],colour=dict["colour"])
+                    if not dict["isEnemy"]:
+                        projectile.player = player
+                    mobs[projectileID] = projectile
+                    #projectile.updateSpeedsFromDirection()
+                elif "GruntEnemy" in type:
+                    enemyID =  canvas.create_image(dict["x"],dict["y"],anchor="nw",image= greenEnemyImage,tags=mobileTag())
+                    enemy = mobiles.GruntEnemy(dict["x"],dict["y"],enemyID,dict["height"],dict["width"],dict["direction"],speed=dict["speed"],shotCooldown=dict["shotCooldownReset"] * tickDelay(),turnCooldown=dict["turnCooldownReset"] * tickDelay())
+                    mobs[enemyID] = enemy
+                    #enemy.updateSpeedsFromDirection()
+                
+            healthLabel.config(text="x" + str(player.health))
+            scoreLabel.config(text="Score:\n" + str(player.score))
+            player.healthLabel = healthLabel
+            player.scoreLabel = scoreLabel
+            
+            unpause(event)
+                
+
+
 def removeLeaderboard(event):
     canvas.delete(leaderboardTag)
+
 
 def showLeaderboard(event):
     #This generates a new leaderboard every time because it could change, I can't just move it off screen
@@ -143,14 +207,14 @@ def showLeaderboard(event):
         scoreString += line
     
     #This code generates the text, and then generates outlines that go around the text using bounding boxes.
-    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white", tags=("leaderboardContent",leaderboardTag,pauseMenuTag)) 
+    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white", tags=("leaderboardContent",leaderboardTag,menuTag)) 
     scoresBBox = canvas.bbox(scores)
-    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboardTag,"exitLeaderboard",pauseMenuTag))
+    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboardTag,"exitLeaderboard",menuTag))
     exitBBox = canvas.bbox(leaderboardExit)
-    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboardTag,"exitLeaderboard",pauseMenuTag))
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboardTag,"exitLeaderboard",menuTag))
     overallBBox = canvas.bbox(leaderboardExit,scores)
     
-    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboardTag,pauseMenuTag))
+    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboardTag,menuTag))
     
     canvas.tag_raise(exitOutline,overallOutline)
     canvas.tag_raise("leaderboardContent","outline") # the way raise and lower work is that it raises the first thing, over the second thing given
@@ -161,16 +225,7 @@ def startGame(event):
     """This function will reset the game to be played again, or just for the first time
     """
     
-    window.unbind("<KeyRelease>")
-    window.bind("a",moveLeft )
-    window.bind("d",moveRight )
-    window.bind("s",moveDown )
-    window.bind("w",moveUp )
-    window.bind("<KeyRelease-a>",moveRight ) # Currently an issue if someone holds multiple movement keys on the start screen
-    window.bind("<KeyRelease-d>",moveLeft )
-    window.bind("<KeyRelease-s>",moveUp )
-    window.bind("<KeyRelease-w>",moveDown )
-    window.bind("<Button-1>",fire)
+    
     
     for ID in mobs: #Just clears out all of the enemies on the canvas
         canvas.delete(ID)
@@ -180,19 +235,35 @@ def startGame(event):
     enemySpawnCooldown = 1000 / tickDelay()
     enemySpawnReset = enemySpawnCooldown
     
-    playerID = canvas.create_image(766,700,anchor="nw",image= playerImage)
-    player = mobiles.Player(766,700,playerID,playerImage.height(),playerImage.width())
+    playerID = canvas.create_image(canvas.winfo_width()//3,canvas.winfo_height()//2, anchor="nw",image= playerImage,tags=mobileTag())
+    player = mobiles.Player(canvas.winfo_width()//3,canvas.winfo_height()//2, playerID,playerImage.height(),playerImage.width())
     mobs[playerID] = player
+
     
     healthLabel.config(text="x" + str(player.health))
     scoreLabel.config(text="Score:\n0")
     player.healthLabel = healthLabel
     player.scoreLabel = scoreLabel
+    
+    window.unbind("<KeyRelease>")
+    window.bind("a",moveLeft )
+    window.bind("d",moveRight )
+    window.bind("s",moveDown )
+    window.bind("w",moveUp )
+    window.bind("<KeyRelease-a>",moveRight )
+    window.bind("<KeyRelease-d>",moveLeft )
+    window.bind("<KeyRelease-s>",moveUp )
+    window.bind("<KeyRelease-w>",moveDown )
+    window.bind("<Button-1>",fire)
     window.bind("p",pause)
+    
+    
     canvas.tag_raise(resumeTag,startTag)
     unpause()
 
 def start(event):
+    """This function could all be put in main, except the canvas dimensions wouldn't exist then, so it has to be in a function after an event has happened and the mainloop has given the canvas dimensions.
+    """
     
     startScreen.destroy()
     startText.destroy()
@@ -200,27 +271,43 @@ def start(event):
     #This will make a start/pause menu, since they have elements in common. So on top, there's a start / resume button for the start and pause menu respectively
     #Then there's the leaderboard, which is the same for both.
     
-    backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=pauseMenuTag,outline="white")
+    backgroundBlock = canvas.create_rectangle(canvas.winfo_width()//3, 30, 2*(canvas.winfo_width()//3),canvas.winfo_height()-30,fill="black",tags=menuTag,outline="white")
     
     startX = canvas.winfo_width()//3 +10
     startY = 40
     
-    blockHeight = canvas.winfo_height()//3 - 40
+    blockHeight = canvas.winfo_height()//5 - 40
     blockWidth = canvas.winfo_width()//3 - 20
     
     #These make the resume block
-    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,resumeTag))
-    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Resume",font="Fixedsys 32",fill="white",tags=(pauseMenuTag,resumeTag))
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,resumeTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Resume",font="Fixedsys 32",fill="white",tags=(menuTag,resumeTag))
     
     #These make the start block, in the same place, since one will just be in front of the other
-    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,startTag))
-    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Start New Game",font="Fixedsys 32",fill="white",tags=(pauseMenuTag,startTag))
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,startTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Start New Game",font="Fixedsys 32",fill="white",tags=(menuTag,startTag))
     
-    startY += blockHeight 
     
-    leaderboardBlock = canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(pauseMenuTag,leaderboardButtonTag))
-    leaderboardText = canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,tags=(pauseMenuTag,leaderboardButtonTag),text="leaderboard",font="Fixedsys 32",fill="white")
-    startY += blockHeight
+    startY += blockHeight +10
+    #Makes the leaderboard button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,leaderboardButtonTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="leaderboard",font="Fixedsys 32",fill="white",tags=(menuTag,leaderboardButtonTag))
+    
+    startY += blockHeight +10
+    #Makes the load game button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,loadTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Load Game",font="Fixedsys 32",fill="white",tags=(menuTag,loadTag))
+    
+    startY += blockHeight +10
+    #Makes the save game button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,saveTag,onlyPausedTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Save Game",font="Fixedsys 32",fill="white",tags=(menuTag,saveTag,onlyPausedTag))
+    
+    startY += blockHeight +10
+    #Makes the restart button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,restartTag,onlyPausedTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Restart Game",font="Fixedsys 32",fill="white",tags=(menuTag,restartTag,onlyPausedTag))
+    
     
     #Making the game over block
     canvas.create_rectangle(canvas.winfo_width()//4,40,3* canvas.winfo_width()//4,canvas.winfo_height() -40,fill="black",outline="white",tags=gameOverTag)
@@ -230,10 +317,14 @@ def start(event):
     
     canvas.tag_lower(gameOverTag)
     
-    canvas.tag_raise(pauseMenuTag)
+    canvas.tag_raise(menuTag)
     canvas.tag_raise(startTag,resumeTag)
+    canvas.tag_lower(onlyPausedTag)
     canvas.tag_bind(resumeTag,"<Button-1>",unpause)
     canvas.tag_bind(startTag,"<Button-1>",startGame)
+    canvas.tag_bind(saveTag,"<Button-1>",saveGame)
+    canvas.tag_bind(loadTag,"<Button-1>",loadGame)
+    canvas.tag_bind(restartTag,"<Button-1>",startGame) # Pulling a bit of a sneaky here. Restarting does the same thing as startGame does
     canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
 
 window = window()
@@ -307,13 +398,18 @@ scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 # crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
 #coordinates at the beginning are x then y
 
-pauseMenuTag = "pauseMenu"
+#Just collecting tags here in case I change them, and to avoid typos. 
+menuTag = "menuTag"
 resumeTag = "resume"
 leaderboardButtonTag= "leaderboardButton"
 leaderboardTag = "leaderboard"
 startTag = "start"
 gameOverTag = "gameOver"
 GOWindowTag = "GameOverWindowTag"
+restartTag = "restartTag"
+onlyPausedTag = "onlyPausedTag" #this is here to lower elements in the menu that should only be there when the game is paused, and not there when the game is over
+loadTag = "loadTag"
+saveTag = "saveTag"
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown

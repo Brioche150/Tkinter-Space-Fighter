@@ -3,7 +3,7 @@ from string import hexdigits
 from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
-from constants import mobs, tickDelay, canvas
+from constants import mobs, tickDelay, canvas,mobileTag
 
 """This module stores all of the classes that will be moving around during the game.
 This is basically all of the sprites moving around in the game.
@@ -89,11 +89,11 @@ class Mobile:
 class Player(Mobile):
     """This is the player class, which the user will control in this space fighter game.
     """
-    def __init__(self, x,y, imageID, height, width, speed =0.5, health =3, isEnemy = False) -> None:
-        super().__init__(x,y,imageID, height, width,speed,health,isEnemy)
+    def __init__(self, x,y, imageID, height, width, speed =0.5, health =3,score=0) -> None:
+        super().__init__(x,y,imageID, height, width,speed,health,isEnemy=False)
         self.healthLabel: Label = None 
         self.scoreLabel: Label = None 
-        self.score =0
+        self.score =score
         
     def move(self):
         super().move()
@@ -128,11 +128,11 @@ class Player(Mobile):
         """
         x = self.x+10
         y = self.y+10
-        shotID = canvas().create_oval(x,y,x+10,y+10,fill="yellow")
+        shotID = canvas().create_oval(x,y,x+10,y+10,fill="yellow",tags=mobileTag())
         
         direction = calcDirection(x,y,event.x,event.y)
         
-        shot = Projectile(x,y,shotID,10,10,direction,isEnemy=False, player = self)
+        shot = Projectile(x,y,shotID,10,10,direction,isEnemy=False, player = self,colour="yellow")
         mobs()[shotID] = shot
     
     
@@ -173,9 +173,10 @@ class Projectile(NPC):
         NPC (_type_): _description_
     """
     
-    def __init__(self,x,y,imageID,height,width, direction, speed =1.5,health=1, isEnemy = True, player : Player = None) -> None:
+    def __init__(self,x,y,imageID,height,width, direction, speed =1.5,health=1, isEnemy = True, player : Player = None, colour = "red") -> None:
         super().__init__(x,y,imageID, height, width,direction,speed,health,isEnemy)
         self.player = player
+        self.colour = colour
         
     def move(self):
         """Projectile's move is the same as the regular move - updating position based on x and y speed - but deletes the projectile if it hits the edge of the canvas.
@@ -217,8 +218,8 @@ class GruntEnemy(NPC):
     Args:
         NPC (_type_): _description_
     """
-    def __init__(self,x,y,imageID,height,width, direction, speed =0.3, isEnemy = True, shotCooldown = 1000,turnCooldown = 1000) -> None:
-        super().__init__(x,y,imageID, height, width,direction,speed,isEnemy)
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.3, shotCooldown = 1000,turnCooldown = 1000) -> None:
+        super().__init__(x,y,imageID, height, width,direction,speed,isEnemy=True)
         self.shotCooldown = shotCooldown // tickDelay() 
         self.turnCooldown = turnCooldown // (tickDelay() * 8) # This just makes them change direction quickly after they spawn
         self.shotCooldownReset = self.shotCooldown   
@@ -254,7 +255,7 @@ class GruntEnemy(NPC):
  
         """
         if(self.shotCooldown <= 0):
-            shotID = canvas().create_oval(self.x + 12,self.y +12,self.x+22,self.y+22,fill="red")
+            shotID = canvas().create_oval(self.x + 12,self.y +12,self.x+22,self.y+22,fill="red",tags=mobileTag())
             
             direction = calcDirection(self.x + 12, self.y +12, x,y)
             
