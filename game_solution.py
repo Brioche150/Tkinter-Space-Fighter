@@ -99,12 +99,23 @@ def pause(*ignore):
         canvas.tag_raise(menuTag)
         canvas.tag_raise(onlyPausedTag)
 
-def unpause(*ignore):
-    global paused
-    if paused:
+def countdown(countdownID,num):
+    canvas.delete(countdownID)
+    if num==1:
+        global paused
         paused = False
-        canvas.tag_lower(menuTag)
         tick()
+    else:
+        num-=1
+        countdownID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height()//2,text=str(num),font="Fixedsys 36",fill="white")
+        window.after(750,lambda ID = countdownID: countdown(ID,num))
+
+def unpause(*ignore):
+    if paused:
+        canvas.tag_lower(menuTag)
+        countdownID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height()//2,text="3",font="Fixedsys 36",fill="white")
+        window.after(750,lambda ID = countdownID: countdown(ID,3))
+        #tick()
 
 def generateEnemies():
     global enemySpawnCooldown
