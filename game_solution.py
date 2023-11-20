@@ -5,6 +5,7 @@
     """
 import json
 import math
+from platform import release
 from random import randint
 from textwrap import fill
 from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, EventType
@@ -15,13 +16,17 @@ from constants import tickDelay, window, canvas, mobs, mobileTag
 import mobiles
 
 def moveLeft(*ignore):
-    player.changeXSpeed(-player.speed)
+    if not player == None:
+        player.changeXSpeed(-player.speed)
 def moveRight(*ignore):
-    player.changeXSpeed(player.speed)
+    if not player == None:
+        player.changeXSpeed(player.speed)
 def moveUp(*ignore):
-    player.changeYSpeed(-player.speed)
+    if not player == None:
+        player.changeYSpeed(-player.speed)
 def moveDown(*ignore):
-    player.changeYSpeed(player.speed)
+    if not player == None:
+        player.changeYSpeed(player.speed)
 
 def submit():
     name = entry.get()[:3].upper() # First three letters that the user enters
@@ -223,55 +228,69 @@ def loadGame(event):
 
 def exitRebind(event):
     canvas.tag_lower(rebindMenuTag)
-    print("in exit")
 
 def rebind(onPress,onRelease, name,promptID,event : Event):
-    print("In rebind")
-    global rebindStarted #This hurts me, but I don't know how else to listen for any input straight after left clicking
-    if rebindStarted:
-        rebindStarted = False
+    """This is mostly working, but there are issues when mouse-1 isn't bound to anything, because the same click that prompts the user is taken as an input
+    tkinter automatically doesn't take a general keypress from keys that are already bound, so if the user has 'a' bound to left, then they can't bind anything else to a
+    Args:
+        onPress (function): This is the function that should be called when the given key is pressed
+        onRelease (function): This is the function that should be called when the given key is released (only really used for the move bindings)
+        name (String): This is the name of the binding to change, determined by which binding is clicked
+        promptID (Int): This is the ID of the prompt made. It's just needed so that it can be deleted
+        event (Event): The event of the key press gives which key was pressed. Although this breaks and just gives the mouse click if Button-1 isn't bound to anything.
+    """
+    global mouse1DownBind
+    isKeyPress = False
+    updatedBindings = ""
+    if event.keysym != "??": # Checking if it's a key press or mouse press
+        entry = "<" + event.keysym + ">"
+        isKeyPress = True
     else:
-        print(event.keysym)
-        updatedBindings = ""
-        if event.keysym != "??": # Checking if it's a key press or mouse press
-            entry = event.keysym
-        else:
-            entry = "<Button-" + str(event.num) + ">"
-        with open("bindings.txt") as file:
-            for line in file:
-                if name in line: #This needs error correction to stop them binding everything to one key
-                    
-                    if "Button-1" in line:
-                        window.unbind("<Button-1>",mouse1Bind)
-                    else:
-                        keybind = line.split(" ")[1].strip()
-                        window.unbind(keybind)
-                        window.unbind("<KeyRelease-" + keybind + ">")
-                    updatedBindings += line.split(" ")[0] +" <" + entry +">\n"
-                    window.bind(entry,onPress)
-                    if not onRelease == None:
-                        window.bind("<KeyRelease-" + entry + ">",onRelease)
+        entry = "<Button-" + str(event.num) + ">"
+    with open("bindings.txt") as file:
+        for line in file:
+            if name in line:
+                
+                if "Button-1" in line:
+                    window.unbind("<Button-1>",mouse1DownBind)
+                    window.unbind("<ButtonRelease-1>")
                 else:
-                    updatedBindings +=line
-                    
-        
-            
-        
-        canvas.delete(promptID)
-        window.unbind("<KeyPress>",keybindID)
-        window.unbind("<Button>",mousebindID)
+                    keybind = line.split(" ")[1].strip() # every keybind will be stored enclosed in angle brackets <>
+                    window.unbind(keybind)
+                    window.unbind("<KeyRelease-" + keybind[1:]) # The slicing just cuts the '<' off
+                    window.unbind("<ButtonRelease-" + keybind[1:])
+                updatedBindings += line.split(" ")[0] + " "+ entry +"\n"
+                temp =window.bind(entry,onPress)
+                if "Button-1" in entry:
+                    mouse1DownBind = temp
+                if not onRelease == None:
+                    if isKeyPress:
+                        window.bind("<KeyRelease-" + entry[1:],onRelease)
+                    else:
+                        window.bind("<ButtonRelease-" + str(event.num) + ">\n",onRelease)
+            else:
+                updatedBindings +=line
+    
+    with open("bindings.txt","w") as file:
+        file.write(updatedBindings)
+    
+    
+    canvas.delete(promptID)
+    window.unbind("<KeyPress>",keybindID)
+    window.unbind("<Button>",mousebindID)
+    canvas.delete(rebindMenuTag)
+    makeRebindMenu()
 
 
 def getRebind(event,name,onPress,onRelease = None):
-    global rebindStarted
-    print("in getRebind")
     global keybindID, mousebindID
-    rebindStarted = True
     promptID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height() - 70,text= "Enter the keybind you would \nlike to replace this with",fill="white",font="Fixedsys 28")
     keybindID = window.bind("<KeyPress>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name : rebind(onPress,onRelease,name,promptID,event),add=True)
     #Issue here of getting a mouse binding making it read the click of the button
     mousebindID =window.bind("<Button>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name: rebind(onPress,onRelease,name,promptID,event),add=True)
-
+    print(keybindID)
+    print(mousebindID)
+    
 def showRebind(event):
     canvas.tag_raise(rebindMenuTag)
 
@@ -304,6 +323,40 @@ def showLeaderboard(event):
     canvas.tag_bind(exitLeaderboardTag,"<Button-1>",removeLeaderboard)
     scoreRead.close()
 
+def makeRebindMenu():
+    startX = canvas.winfo_width()//2
+    startY = 90
+    tags = [leftTag,rightTag,upTag,downTag,bossTag,pauseKeyTag,fireTag]
+    text = canvas.create_text(startX,startY, text="Click a binding to change it",font="Fixedsys 28", fill="white",tags=(rebindMenuTag))
+    bbox = canvas.bbox(text)
+    startY = 60 + bbox[3]
+    with open("bindings.txt") as file:
+        for tag in tags:
+            text = file.readline().strip()
+            bind = canvas.create_text(startX,startY,text=text,fill="white",font="Fixedsys 32",tags=(rebindMenuTag,tag))
+            bbox = canvas.bbox(bind)
+            outline = canvas.create_rectangle(bbox,outline="white",tags=(rebindMenuTag,tag),fill="black")
+            canvas.tag_raise(bind,outline)
+            startY =bbox[3] + 40
+    bbox = canvas.bbox(rebindMenuTag)
+    rebindExit = canvas.create_text(bbox[0] - 30,bbox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=(rebindMenuTag,exitRebindTag))
+    exitBBox = canvas.bbox(rebindExit)
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=(rebindMenuTag,exitRebindTag))
+    canvas.tag_raise(rebindExit,exitOutline)
+    overallBBox = canvas.bbox(rebindMenuTag)
+    overallOutline = canvas.create_rectangle(overallBBox[0],overallBBox[1],overallBBox[2],canvas.winfo_height()-20,fill="black",outline="white",tags=rebindMenuTag)
+    canvas.tag_lower(overallOutline,rebindMenuTag)
+    canvas.tag_bind(rebindTag,"<Button-1>",showRebind)
+    canvas.tag_bind(exitRebindTag,"<Button-1>",exitRebind)
+    #Now a list of all the bindings
+    canvas.tag_bind(leftTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"left",moveLeft,moveRight))
+    canvas.tag_bind(rightTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"right",moveRight,moveLeft))
+    canvas.tag_bind(upTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"up",moveUp,moveDown))
+    canvas.tag_bind(downTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"down",moveDown,moveUp))
+    canvas.tag_bind(bossTag,"<Button-1>",lambda event, bossToggle = bossToggle: getRebind(event,"boss",bossToggle))
+    canvas.tag_bind(pauseKeyTag,"<Button-1>",lambda event, pause = pause: getRebind(event,"pause",pause))
+    canvas.tag_bind(fireTag,"<Button-1>",lambda event, fire = fire: getRebind(event,"fire",fire))
+
 def startGame(event):
     """This function will reset the game to be played again, or just for the first time
     """
@@ -328,17 +381,8 @@ def startGame(event):
     player.healthLabel = healthLabel
     player.scoreLabel = scoreLabel
     
-    window.unbind("<KeyRelease>")
-    window.bind("<a>",moveLeft )
-    window.bind("<d>",moveRight )
-    window.bind("<s>",moveDown )
-    window.bind("<w>",moveUp )
-    window.bind("<KeyRelease-a>",moveRight )
-    window.bind("<KeyRelease-d>",moveLeft )
-    window.bind("<KeyRelease-s>",moveUp )
-    window.bind("<KeyRelease-w>",moveDown )
-    button1Bind = window.bind("<Button-1>",fire)
-    window.bind("p",pause)
+    
+    
     
     
     canvas.tag_raise(resumeTag,startTag)
@@ -347,7 +391,7 @@ def startGame(event):
 def start(event):
     """This function could all be put in main, except the canvas dimensions wouldn't exist then, so it has to be in a function after an event has happened and the mainloop has given the canvas dimensions.
     """
-    window.bind("b",bossToggle)
+    window.unbind("<KeyRelease>")
     startScreen.destroy()
     startText.destroy()
     
@@ -408,29 +452,7 @@ def start(event):
     canvas.create_text(canvas.winfo_width()//2,160,text="Name (Three letters) ",font= "Fixedsys 32",fill="white",tags=gameOverTag)
     #There are windows made after this, but they have to keep getting deleted and remade in the gameOver code, because they go in front of everything
     
-    #Making the rebind menu
-    startX = canvas.winfo_width()//2
-    startY = 90
-    tags = [leftTag,rightTag,upTag,downTag,fireTag,bossTag]
-    text = canvas.create_text(startX,startY, text="Click a binding to change it",font="Fixedsys 28", fill="white",tags=(rebindMenuTag))
-    bbox = canvas.bbox(text)
-    startY = 60 + bbox[3]
-    with open("bindings.txt") as file:
-        for tag in tags:
-            text = file.readline().strip()
-            bind = canvas.create_text(startX,startY,text=text,fill="white",font="Fixedsys 32",tags=(rebindMenuTag,tag))
-            bbox = canvas.bbox(bind)
-            outline = canvas.create_rectangle(bbox,outline="white",tags=(rebindMenuTag,tag),fill="black")
-            canvas.tag_raise(bind,outline)
-            startY =bbox[3] + 40
-    bbox = canvas.bbox(rebindMenuTag)
-    rebindExit = canvas.create_text(bbox[0] - 30,bbox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=(rebindMenuTag,exitRebindTag))
-    exitBBox = canvas.bbox(rebindExit)
-    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=(rebindMenuTag,exitRebindTag))
-    canvas.tag_raise(rebindExit,exitOutline)
-    overallBBox = canvas.bbox(rebindMenuTag)
-    overallOutline = canvas.create_rectangle(overallBBox[0],overallBBox[1],overallBBox[2],canvas.winfo_height()-20,fill="black",outline="white",tags=rebindMenuTag)
-    canvas.tag_lower(overallOutline,rebindMenuTag)        
+    makeRebindMenu()        
     canvas.tag_lower(rebindMenuTag)
     
     
@@ -443,17 +465,40 @@ def start(event):
     canvas.tag_bind(saveTag,"<Button-1>",saveGame)
     canvas.tag_bind(loadTag,"<Button-1>",loadGame)
     canvas.tag_bind(cheatTag,"<Button-1>",cheat)
-    canvas.tag_bind(rebindTag,"<Button-1>",showRebind)
-    canvas.tag_bind(exitRebindTag,"<Button-1>",exitRebind)
+    
     canvas.tag_bind(restartTag,"<Button-1>",startGame) # Pulling a bit of a sneaky here. Restarting does the same thing as startGame does
     canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
-    #Now a list of all the bindings
-    canvas.tag_bind(leftTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"left",moveLeft,moveRight))
-    canvas.tag_bind(rightTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"right",moveRight,moveLeft))
-    canvas.tag_bind(upTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"up",moveUp,moveDown))
-    canvas.tag_bind(downTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"down",moveDown,moveUp))
-    canvas.tag_bind(fireTag,"<Button-1>",lambda event, fire = fire: getRebind(event,"fire",fire))
-    canvas.tag_bind(bossTag,"<Button-1>",lambda event, bossToggle = bossToggle: getRebind(event,"boss",bossToggle))
+    
+    global mouse1Bind
+    with open("bindings.txt") as file:
+        functionList = [moveLeft,moveRight,moveUp,moveDown,bossToggle,pause,fire]
+        #i =0 to +1, 1 to -1, 2 to +1, 3 to -1
+        for i  in range(len(functionList)):
+            keybind = file.readline().split(" ")[1].strip()    
+            temp = window.bind(keybind,functionList[i])
+            if "Button-1" in keybind:
+                mouse1DownBind = temp # This is here to make sure that clicking through the menus doesn't get broken.
+            if i <= 3:
+                releaseIndex = i +1 -(2*(i%2)) #This math here gets the index the release function, which will just be + or -1 from i.
+                if "Button" in keybind:
+                    buttonEnd = keybind.split("-")[1]
+                    window.bind("ButtonRelease-" + buttonEnd,functionList[releaseIndex]) 
+                else:
+                    window.bind("<KeyRelease-" + keybind[1:],functionList[releaseIndex])
+            
+    # window.bind("<a>",moveLeft )
+    # window.bind("<d>",moveRight )
+    # window.bind("<s>",moveDown )
+    # window.bind("<w>",moveUp )
+    # window.bind("<KeyRelease-a>",moveRight )
+    # window.bind("<KeyRelease-d>",moveLeft )
+    # window.bind("<KeyRelease-s>",moveUp )
+    # window.bind("<KeyRelease-w>",moveDown )
+    # window.bind("b",bossToggle)
+    # window.bind("p",pause)
+    # global mouse1DownBind
+    # mouse1DownBind = window.bind("<Button-1>",fire)
+    
 
 window = window()
 canvas = canvas()
@@ -468,7 +513,7 @@ paused = True
 bossShown = False
 
 playerID : int
-player : mobiles.Player
+player : mobiles.Player = None
 
 
 bossImage = PhotoImage(file="assets/bossImage.png")
@@ -545,16 +590,19 @@ upTag = "upTag"
 downTag = "downTag"
 fireTag = "fireTag"
 bossTag = "bossTag"
+pauseKeyTag = "pauseKeyTag"
 rebindMenuTag = "rebindMenuTag"
 outlineTag = "outline"
 exitLeaderboardTag =  "exitLeaderboardTag"
 contentTag = "contentTag"
 exitRebindTag = "exitRebindTag"
 
+#These two IDs are here to pick up any input from the user when rebinding
 keybindID = ""
 mousebindID = ""
-mouse1Bind = ""
-rebindStarted= False #This is the biggest cludge known to man because an left click is creating a binding for any mouse click
+
+#
+mouse1DownBind = ""
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown
