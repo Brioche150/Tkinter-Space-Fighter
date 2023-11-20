@@ -7,7 +7,8 @@ import json
 import math
 from random import randint
 from textwrap import fill
-from tkinter import END, Button, Entry, Label, Tk, Canvas, PhotoImage, EventType
+from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, EventType
+from turtle import down
 from PIL import Image, ImageTk
 from typing import Dict
 from constants import tickDelay, window, canvas, mobs, mobileTag
@@ -219,8 +220,63 @@ def loadGame(event):
             player.scoreLabel = scoreLabel
             
             unpause(event)
-                
 
+def exitRebind(event):
+    canvas.tag_lower(rebindMenuTag)
+    print("in exit")
+
+def rebind(onPress,onRelease, name,promptID,event : Event):
+    print("In rebind")
+    global rebindStarted #This hurts me, but I don't know how else to listen for any input straight after left clicking
+    if rebindStarted:
+        rebindStarted = False
+    else:
+        print(event.keysym)
+        updatedBindings = ""
+        if event.keysym != "??": # Checking if it's a key press or mouse press
+            entry = event.keysym
+        else:
+            entry = "<Button-" + str(event.num) + ">"
+        with open("bindings.txt") as file:
+            for line in file:
+                if name in line: #This needs error correction to stop them binding everything to one key
+                    
+                    if "Button-1" in line:
+                        window.unbind("<Button-1>",mouse1Bind)
+                    else:
+                        keybind = line.split(" ")[1].strip()
+                        window.unbind(keybind)
+                        window.unbind("<KeyRelease-" + keybind + ">")
+                    updatedBindings += line.split(" ")[0] +" <" + entry +">\n"
+                    window.bind(entry,onPress)
+                    if not onRelease == None:
+                        window.bind("<KeyRelease-" + entry + ">",onRelease)
+                else:
+                    updatedBindings +=line
+                    
+        
+            
+        
+        canvas.delete(promptID)
+        window.unbind("<KeyPress>",keybindID)
+        window.unbind("<Button>",mousebindID)
+
+
+def getRebind(event,name,onPress,onRelease = None):
+    global rebindStarted
+    print("in getRebind")
+    global keybindID, mousebindID
+    rebindStarted = True
+    promptID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height() - 70,text= "Enter the keybind you would \nlike to replace this with",fill="white",font="Fixedsys 28")
+    keybindID = window.bind("<KeyPress>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name : rebind(onPress,onRelease,name,promptID,event),add=True)
+    #Issue here of getting a mouse binding making it read the click of the button
+    mousebindID =window.bind("<Button>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name: rebind(onPress,onRelease,name,promptID,event),add=True)
+
+def showRebind(event):
+    canvas.tag_raise(rebindMenuTag)
+
+def cheat(event):
+    pass
 
 def removeLeaderboard(event):
     canvas.delete(leaderboardTag)
@@ -234,18 +290,18 @@ def showLeaderboard(event):
         scoreString += line
     
     #This code generates the text, and then generates outlines that go around the text using bounding boxes.
-    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2,text=scoreString,font="Fixedsys 36",fill="white", tags=("leaderboardContent",leaderboardTag,menuTag)) 
+    scores = canvas.create_text(5*(canvas.winfo_width()//6), canvas.winfo_height()//2+32,text=scoreString,font="Fixedsys 36",fill="white", tags=(contentTag,leaderboardTag,menuTag)) 
     scoresBBox = canvas.bbox(scores)
-    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=("leaderboardContent",leaderboardTag,"exitLeaderboard",menuTag))
+    leaderboardExit = canvas.create_text(scoresBBox[0] - 30,scoresBBox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=(contentTag,leaderboardTag,exitLeaderboardTag,menuTag))
     exitBBox = canvas.bbox(leaderboardExit)
-    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=("outline",leaderboardTag,"exitLeaderboard",menuTag))
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=(outlineTag,leaderboardTag,exitLeaderboardTag,menuTag))
     overallBBox = canvas.bbox(leaderboardExit,scores)
     
-    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=("outline",leaderboardTag,menuTag))
+    overallOutline = canvas.create_rectangle(overallBBox[0]-5,overallBBox[1]-5,overallBBox[2] +30 ,overallBBox[3] + 30,outline="white",fill="black",tags=(outlineTag,leaderboardTag,menuTag))
     
     canvas.tag_raise(exitOutline,overallOutline)
-    canvas.tag_raise("leaderboardContent","outline") # the way raise and lower work is that it raises the first thing, over the second thing given
-    canvas.tag_bind("exitLeaderboard","<Button-1>",removeLeaderboard)
+    canvas.tag_raise(contentTag,outlineTag) # the way raise and lower work is that it raises the first thing, over the second thing given
+    canvas.tag_bind(exitLeaderboardTag,"<Button-1>",removeLeaderboard)
     scoreRead.close()
 
 def startGame(event):
@@ -273,15 +329,15 @@ def startGame(event):
     player.scoreLabel = scoreLabel
     
     window.unbind("<KeyRelease>")
-    window.bind("a",moveLeft )
-    window.bind("d",moveRight )
-    window.bind("s",moveDown )
-    window.bind("w",moveUp )
+    window.bind("<a>",moveLeft )
+    window.bind("<d>",moveRight )
+    window.bind("<s>",moveDown )
+    window.bind("<w>",moveUp )
     window.bind("<KeyRelease-a>",moveRight )
     window.bind("<KeyRelease-d>",moveLeft )
     window.bind("<KeyRelease-s>",moveUp )
     window.bind("<KeyRelease-w>",moveDown )
-    window.bind("<Button-1>",fire)
+    button1Bind = window.bind("<Button-1>",fire)
     window.bind("p",pause)
     
     
@@ -303,7 +359,7 @@ def start(event):
     startX = canvas.winfo_width()//3 +10
     startY = 40
     
-    blockHeight = canvas.winfo_height()//5 - 40
+    blockHeight = canvas.winfo_height()//7 - 40
     blockWidth = canvas.winfo_width()//3 - 20
     
     #These make the resume block
@@ -326,6 +382,16 @@ def start(event):
     canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Load Game",font="Fixedsys 32",fill="white",tags=(menuTag,loadTag))
     
     startY += blockHeight +10
+    #Makes the rebind keys button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,rebindTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Rebind Controls",font="Fixedsys 32",fill="white",tags=(menuTag,rebindTag))
+    
+    startY += blockHeight +10
+    #Makes the cheat code button
+    canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,cheatTag))
+    canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Cheat Codes",font="Fixedsys 32",fill="white",tags=(menuTag,cheatTag))
+    
+    startY += blockHeight +10
     #Makes the save game button
     canvas.create_rectangle(startX, startY, startX + blockWidth, startY + blockHeight,fill="black",outline="white",tags=(menuTag,saveTag,onlyPausedTag))
     canvas.create_text(startX + blockWidth//2, startY + blockHeight//2,text="Save Game",font="Fixedsys 32",fill="white",tags=(menuTag,saveTag,onlyPausedTag))
@@ -340,10 +406,35 @@ def start(event):
     canvas.create_rectangle(canvas.winfo_width()//4,40,3* canvas.winfo_width()//4,canvas.winfo_height() -40,fill="black",outline="white",tags=gameOverTag)
     canvas.create_text(canvas.winfo_width()//2,90,text="Game Over!",font= "Fixedsys 48",fill="white",tags=gameOverTag)
     canvas.create_text(canvas.winfo_width()//2,160,text="Name (Three letters) ",font= "Fixedsys 32",fill="white",tags=gameOverTag)
-    #There are windows made after this, but they have to keep getting deleted and remade in the game over code, because they go in front of everything
+    #There are windows made after this, but they have to keep getting deleted and remade in the gameOver code, because they go in front of everything
+    
+    #Making the rebind menu
+    startX = canvas.winfo_width()//2
+    startY = 90
+    tags = [leftTag,rightTag,upTag,downTag,fireTag,bossTag]
+    text = canvas.create_text(startX,startY, text="Click a binding to change it",font="Fixedsys 28", fill="white",tags=(rebindMenuTag))
+    bbox = canvas.bbox(text)
+    startY = 60 + bbox[3]
+    with open("bindings.txt") as file:
+        for tag in tags:
+            text = file.readline().strip()
+            bind = canvas.create_text(startX,startY,text=text,fill="white",font="Fixedsys 32",tags=(rebindMenuTag,tag))
+            bbox = canvas.bbox(bind)
+            outline = canvas.create_rectangle(bbox,outline="white",tags=(rebindMenuTag,tag),fill="black")
+            canvas.tag_raise(bind,outline)
+            startY =bbox[3] + 40
+    bbox = canvas.bbox(rebindMenuTag)
+    rebindExit = canvas.create_text(bbox[0] - 30,bbox[1] - 30, text="X", font="Fixedsys 44",fill="white",tags=(rebindMenuTag,exitRebindTag))
+    exitBBox = canvas.bbox(rebindExit)
+    exitOutline = canvas.create_rectangle(exitBBox,fill="black",outline="red",tags=(rebindMenuTag,exitRebindTag))
+    canvas.tag_raise(rebindExit,exitOutline)
+    overallBBox = canvas.bbox(rebindMenuTag)
+    overallOutline = canvas.create_rectangle(overallBBox[0],overallBBox[1],overallBBox[2],canvas.winfo_height()-20,fill="black",outline="white",tags=rebindMenuTag)
+    canvas.tag_lower(overallOutline,rebindMenuTag)        
+    canvas.tag_lower(rebindMenuTag)
+    
     
     canvas.tag_lower(gameOverTag)
-    
     canvas.tag_raise(menuTag)
     canvas.tag_raise(startTag,resumeTag)
     canvas.tag_lower(onlyPausedTag)
@@ -351,8 +442,18 @@ def start(event):
     canvas.tag_bind(startTag,"<Button-1>",startGame)
     canvas.tag_bind(saveTag,"<Button-1>",saveGame)
     canvas.tag_bind(loadTag,"<Button-1>",loadGame)
+    canvas.tag_bind(cheatTag,"<Button-1>",cheat)
+    canvas.tag_bind(rebindTag,"<Button-1>",showRebind)
+    canvas.tag_bind(exitRebindTag,"<Button-1>",exitRebind)
     canvas.tag_bind(restartTag,"<Button-1>",startGame) # Pulling a bit of a sneaky here. Restarting does the same thing as startGame does
     canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
+    #Now a list of all the bindings
+    canvas.tag_bind(leftTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"left",moveLeft,moveRight))
+    canvas.tag_bind(rightTag,"<Button-1>",lambda event, moveLeft=moveLeft, moveRight = moveRight: getRebind(event,"right",moveRight,moveLeft))
+    canvas.tag_bind(upTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"up",moveUp,moveDown))
+    canvas.tag_bind(downTag,"<Button-1>",lambda event, moveUp=moveUp, moveDown = moveDown: getRebind(event,"down",moveDown,moveUp))
+    canvas.tag_bind(fireTag,"<Button-1>",lambda event, fire = fire: getRebind(event,"fire",fire))
+    canvas.tag_bind(bossTag,"<Button-1>",lambda event, bossToggle = bossToggle: getRebind(event,"boss",bossToggle))
 
 window = window()
 canvas = canvas()
@@ -436,6 +537,24 @@ restartTag = "restartTag"
 onlyPausedTag = "onlyPausedTag" #this is here to lower elements in the menu that should only be there when the game is paused, and not there when the game is over
 loadTag = "loadTag"
 saveTag = "saveTag"
+rebindTag = "rebindTag"
+cheatTag = "cheatTag"
+leftTag = "leftTag"
+rightTag = "rightTag"
+upTag = "upTag"
+downTag = "downTag"
+fireTag = "fireTag"
+bossTag = "bossTag"
+rebindMenuTag = "rebindMenuTag"
+outlineTag = "outline"
+exitLeaderboardTag =  "exitLeaderboardTag"
+contentTag = "contentTag"
+exitRebindTag = "exitRebindTag"
+
+keybindID = ""
+mousebindID = ""
+mouse1Bind = ""
+rebindStarted= False #This is the biggest cludge known to man because an left click is creating a binding for any mouse click
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpawnReset = enemySpawnCooldown

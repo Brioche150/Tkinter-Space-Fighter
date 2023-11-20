@@ -1,0 +1,6 @@
+left: a
+right: d
+up: w
+down: s
+fire: <Button-1>
+boss: b
