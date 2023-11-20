@@ -240,6 +240,8 @@ def rebind(onPress,onRelease, name,promptID,event : Event):
         event (Event): The event of the key press gives which key was pressed. Although this breaks and just gives the mouse click if Button-1 isn't bound to anything.
     """
     global mouse1DownBind
+    if mouse1DownBind == "stillEmpty":
+        mouse1DownBind = ""
     isKeyPress = False
     updatedBindings = ""
     if event.keysym != "??": # Checking if it's a key press or mouse press
@@ -254,6 +256,7 @@ def rebind(onPress,onRelease, name,promptID,event : Event):
                 if "Button-1" in line:
                     window.unbind("<Button-1>",mouse1DownBind)
                     window.unbind("<ButtonRelease-1>")
+                    mouse1DownBind = ""
                 else:
                     keybind = line.split(" ")[1].strip() # every keybind will be stored enclosed in angle brackets <>
                     window.unbind(keybind)
@@ -281,15 +284,21 @@ def rebind(onPress,onRelease, name,promptID,event : Event):
     canvas.delete(rebindMenuTag)
     makeRebindMenu()
 
+def mouse1Binding(event):
+    global mouse1DownBind
+    window.unbind("<Button-1>",mouse1DownBind)
+    mouse1DownBind = "stillEmpty"
 
 def getRebind(event,name,onPress,onRelease = None):
-    global keybindID, mousebindID
-    promptID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height() - 70,text= "Enter the keybind you would \nlike to replace this with",fill="white",font="Fixedsys 28")
+    global keybindID, mousebindID,mouse1DownBind
+    promptID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height() - 70,text= "Enter the keybind you would \nlike to replace this with",fill="white",font="Fixedsys 28",tags=rebindMenuTag)
     keybindID = window.bind("<KeyPress>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name : rebind(onPress,onRelease,name,promptID,event),add=True)
     #Issue here of getting a mouse binding making it read the click of the button
     mousebindID =window.bind("<Button>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name: rebind(onPress,onRelease,name,promptID,event),add=True)
-    print(keybindID)
-    print(mousebindID)
+    if mouse1DownBind == "":
+        mouse1DownBind = window.bind("<Button-1>",mouse1Binding)
+        
+    
     
 def showRebind(event):
     canvas.tag_raise(rebindMenuTag)
@@ -469,7 +478,7 @@ def start(event):
     canvas.tag_bind(restartTag,"<Button-1>",startGame) # Pulling a bit of a sneaky here. Restarting does the same thing as startGame does
     canvas.tag_bind(leaderboardButtonTag,"<Button-1>",showLeaderboard)
     
-    global mouse1Bind
+    global mouse1DownBind
     with open("bindings.txt") as file:
         functionList = [moveLeft,moveRight,moveUp,moveDown,bossToggle,pause,fire]
         #i =0 to +1, 1 to -1, 2 to +1, 3 to -1

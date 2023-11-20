@@ -3,5 +3,5 @@ right: <d>
 up: <w>
 down: <s>
 boss: <b>
-pause: <p>
+pause: <Escape>
 fire: <Button-1>
