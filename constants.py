@@ -15,14 +15,17 @@ def mobs():
     return myMobs
 def mobileTag():
     return "mobileTag"
+def cheats():
+    return myCheats
 
 myWindow = Tk()
 myWindow.title("Space-Fighter")
 myWindow.geometry("1536x864")
 myWindow.configure(bg="black")
     
-myCanvas = Canvas(myWindow, bg="black", height=800, width=1336,borderwidth=0,highlightthickness=0)
+myCanvas = Canvas(myWindow, bg="black", height=760, width=1336,borderwidth=0,highlightthickness=0)
 myCanvas.grid(column=3,row=1,rowspan=10)
 myMobs = {}
+myCheats={"mark grayson":False,"speed":False}
 
 

@@ -12,7 +12,7 @@ from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, Ev
 from turtle import down
 from PIL import Image, ImageTk
 from typing import Dict
-from constants import tickDelay, window, canvas, mobs, mobileTag
+from constants import tickDelay, window, canvas, mobs, mobileTag, cheats
 import mobiles
 
 def moveLeft(*ignore):
@@ -28,8 +28,8 @@ def moveDown(*ignore):
     if not player == None:
         player.changeYSpeed(player.speed)
 
-def submit():
-    name = entry.get()[:3].upper() # First three letters that the user enters
+def nameSubmit():
+    name = nameEntry.get()[:3].upper() # First three letters that the user enters
     with open("leaderboard.txt") as file:
         leaderboardString = ""
         for line in file:
@@ -49,6 +49,11 @@ def submit():
                 leaderboardString += line
     with open("leaderboard.txt","w") as file:
         file.write(leaderboardString)
+    with open("bindings.txt") as file:
+        for line in file:
+            if "boss" in line:
+                keybind = line.split(" ")[1].strip()
+                window.bind(keybind,bossToggle)
     
     
     
@@ -61,20 +66,26 @@ def submit():
     
 def gameOver():
     
-    #all these unbinds are to get rid of the erorrs of "there is no instance of player" when it doesn't really matter either way.
-    window.unbind("a")
-    window.unbind("d")
-    window.unbind("s")
-    window.unbind("w")
-    window.unbind("<KeyRelease-a>")
-    window.unbind("<KeyRelease-d>")
-    window.unbind("<KeyRelease-s>")
-    window.unbind("<KeyRelease-w>")
-    window.unbind("<Button-1>")
+    #This stops the user from flashing the boss screen if it's part ofthe name they give
+    with open("bindings.txt") as file:
+        for line in file:
+            if "boss" in line:
+                keybind = line.split(" ")[1].strip()
+                window.unbind(keybind)
+            
+    # window.unbind("a")
+    # window.unbind("d")
+    # window.unbind("s")
+    # window.unbind("w")
+    # window.unbind("<KeyRelease-a>")
+    # window.unbind("<KeyRelease-d>")
+    # window.unbind("<KeyRelease-s>")
+    # window.unbind("<KeyRelease-w>")
+    # window.unbind("<Button-1>")
     
-    entry.delete(0,END)
-    canvas.create_window(canvas.winfo_width()//2,240,window = entry,tags=(gameOverTag,GOWindowTag))
-    canvas.create_window(canvas.winfo_width()//2,320,window=buttonSubmit,tags=(gameOverTag,GOWindowTag))
+    nameEntry.delete(0,END)
+    canvas.create_window(canvas.winfo_width()//2,240,window = nameEntry,tags=(gameOverTag,GOWindowTag))
+    canvas.create_window(canvas.winfo_width()//2,320,window=nameSubmitButton,tags=(gameOverTag,GOWindowTag))
     canvas.tag_raise(gameOverTag)
 
 def handleMobs():
@@ -303,8 +314,26 @@ def getRebind(event,name,onPress,onRelease = None):
 def showRebind(event):
     canvas.tag_raise(rebindMenuTag)
 
+def cheatSubmit():
+    cheat = cheatEntry.get().lower()
+    print(cheat)
+    if cheat in cheats:
+        cheats[cheat] = True
+        #canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height()-40, text=cheat +" cheat activated! :)",fill="white",font="Fixedsys 32",tags=(menuTag))
+        activeCheats =""
+        for key in cheats:
+            if cheats[key]:
+                activeCheats += key +", "
+        cheatsLabel.config(text="Active Cheats: " + activeCheats[:-2])
+    canvas.delete(cheatMenuTag)
+
 def cheat(event):
-    pass
+    cheatEntry.delete(0,END)
+    canvas.create_rectangle(canvas.winfo_width()//3,30,2* (canvas.winfo_width()//3),canvas.winfo_height() -30, fill="black",outline="white",tags=cheatMenuTag)
+    canvas.create_text(canvas.winfo_width()//2, 100, text="Enter a cheat code:",font = "Fixedsys 32",fill="white",tags=cheatMenuTag)
+    canvas.create_window(canvas.winfo_width()//2,240,window = cheatEntry,tags=cheatMenuTag)
+    canvas.create_window(canvas.winfo_width()//2,320,window=cheatSubmitButton,tags=cheatMenuTag)
+    canvas.tag_raise(cheatMenuTag)
 
 def removeLeaderboard(event):
     canvas.delete(leaderboardTag)
@@ -494,19 +523,6 @@ def start(event):
                     window.bind("ButtonRelease-" + buttonEnd,functionList[releaseIndex]) 
                 else:
                     window.bind("<KeyRelease-" + keybind[1:],functionList[releaseIndex])
-            
-    # window.bind("<a>",moveLeft )
-    # window.bind("<d>",moveRight )
-    # window.bind("<s>",moveDown )
-    # window.bind("<w>",moveUp )
-    # window.bind("<KeyRelease-a>",moveRight )
-    # window.bind("<KeyRelease-d>",moveLeft )
-    # window.bind("<KeyRelease-s>",moveUp )
-    # window.bind("<KeyRelease-w>",moveDown )
-    # window.bind("b",bossToggle)
-    # window.bind("p",pause)
-    # global mouse1DownBind
-    # mouse1DownBind = window.bind("<Button-1>",fire)
     
 
 window = window()
@@ -517,7 +533,8 @@ background = canvas.create_image(0,0,anchor="nw",image= backgroundImage)
 canvas.tag_lower(background)
 
 mobs : Dict[int, mobiles.Mobile]= mobs() # This list is useful for keeping track of things that need to have the move function ran on them
-playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference tp the image has to stay to not get eaten by garbage collection
+cheats = cheats()
+playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass this in the create_image method because the reference to the image has to stay to not get eaten by garbage collection
 paused = True
 bossShown = False
 
@@ -568,7 +585,8 @@ healthLabel.grid(column=0,row=1)
 scoreLabel =Label(window,borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 
-
+cheatsLabel = Label(window,borderwidth=0,font=("Fixedsys", 15),bg="black",fg="white")
+cheatsLabel.grid(column=1,row=12,columnspan=999)
 
 
 
@@ -593,6 +611,7 @@ loadTag = "loadTag"
 saveTag = "saveTag"
 rebindTag = "rebindTag"
 cheatTag = "cheatTag"
+cheatMenuTag = "cheatMenuTag"
 leftTag = "leftTag"
 rightTag = "rightTag"
 upTag = "upTag"
@@ -618,9 +637,11 @@ enemySpawnReset = enemySpawnCooldown
 score =0
 
 #Making the gameOver elements
-entry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
-buttonSubmit = Button(window,command=submit,text="submit",bg="black",font=("Fixedsys",32),fg="white")
-
+nameEntry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
+nameSubmitButton = Button(window,command=nameSubmit,text="submit",bg="black",font=("Fixedsys",32),fg="white")
+#Making the cheat code elements
+cheatEntry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
+cheatSubmitButton = Button(window,command=cheatSubmit,text="submit",bg="black",font=("Fixedsys",32),fg="white")
 
 
 window.bind("<KeyRelease>",start) # Bit of cheating here, because otherwise there's issues of using a movement key making you start off moving in the wrong direction because of the keyrelease code.
