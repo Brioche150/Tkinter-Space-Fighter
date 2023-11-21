@@ -166,7 +166,7 @@ def tick():
 def bossToggle(event):
     global bossShown
     if not bossShown:
-        global paused
+        global pauseds
         if not paused:
             pause(event)
         bossLabel.grid(row=0,column=0)
@@ -329,7 +329,7 @@ def cheatSubmit():
 
 def cheat(event):
     cheatEntry.delete(0,END)
-    canvas.create_rectangle(canvas.winfo_width()//3,30,2* (canvas.winfo_width()//3),canvas.winfo_height() -30, fill="black",outline="white",tags=cheatMenuTag)
+    canvas.create_rectangle(canvas.winfo_width()//4,30,3* (canvas.winfo_width()//4),canvas.winfo_height() -30, fill="black",outline="white",tags=cheatMenuTag)
     canvas.create_text(canvas.winfo_width()//2, 100, text="Enter a cheat code:",font = "Fixedsys 32",fill="white",tags=cheatMenuTag)
     canvas.create_window(canvas.winfo_width()//2,240,window = cheatEntry,tags=cheatMenuTag)
     canvas.create_window(canvas.winfo_width()//2,320,window=cheatSubmitButton,tags=cheatMenuTag)
