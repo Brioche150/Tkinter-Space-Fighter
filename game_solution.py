@@ -29,6 +29,7 @@ def moveDown(*ignore):
         player.changeYSpeed(player.speed)
 
 def nameSubmit():
+    
     name = nameEntry.get()[:3].upper() # First three letters that the user enters
     with open("leaderboard.txt") as file:
         leaderboardString = ""
@@ -56,7 +57,6 @@ def nameSubmit():
                 window.bind(keybind,bossToggle)
     
     
-    
     canvas.delete(GOWindowTag)
     canvas.tag_lower(gameOverTag)
     canvas.tag_raise(menuTag)
@@ -66,25 +66,24 @@ def nameSubmit():
     
 def gameOver():
     
-    #This stops the user from flashing the boss screen if it's part ofthe name they give
+    #This stops the user from flashing the boss screen if it's part of the name they give
     with open("bindings.txt") as file:
         for line in file:
             if "boss" in line:
                 keybind = line.split(" ")[1].strip()
                 window.unbind(keybind)
-            
-    # window.unbind("a")
-    # window.unbind("d")
-    # window.unbind("s")
-    # window.unbind("w")
-    # window.unbind("<KeyRelease-a>")
-    # window.unbind("<KeyRelease-d>")
-    # window.unbind("<KeyRelease-s>")
-    # window.unbind("<KeyRelease-w>")
-    # window.unbind("<Button-1>")
     
     nameEntry.delete(0,END)
-    canvas.create_window(canvas.winfo_width()//2,240,window = nameEntry,tags=(gameOverTag,GOWindowTag))
+    hasCheated = False
+    for cheatActive in cheats.values():
+        if cheatActive:
+            hasCheated = True
+            break
+    if not hasCheated:
+        canvas.create_window(canvas.winfo_width()//2,240,window = nameEntry,tags=(gameOverTag,GOWindowTag))
+        cheatEntry.focus_set()
+    else:
+        canvas.create_text(canvas.winfo_width()//2,240,text="No fame for you, cheater",font="Fixedsys 32", fill="white",tags=(gameOverTag))
     canvas.create_window(canvas.winfo_width()//2,320,window=nameSubmitButton,tags=(gameOverTag,GOWindowTag))
     canvas.tag_raise(gameOverTag)
 
@@ -316,7 +315,6 @@ def showRebind(event):
 
 def cheatSubmit():
     cheat = cheatEntry.get().lower()
-    print(cheat)
     if cheat in cheats:
         cheats[cheat] = True
         #canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height()-40, text=cheat +" cheat activated! :)",fill="white",font="Fixedsys 32",tags=(menuTag))
@@ -324,6 +322,8 @@ def cheatSubmit():
         for key in cheats:
             if cheats[key]:
                 activeCheats += key +", "
+            if cheat == "mark grayson":
+                heartLabel.config(image=ironHeart)
         cheatsLabel.config(text="Active Cheats: " + activeCheats[:-2])
     canvas.delete(cheatMenuTag)
 
@@ -332,6 +332,7 @@ def cheat(event):
     canvas.create_rectangle(canvas.winfo_width()//4,30,3* (canvas.winfo_width()//4),canvas.winfo_height() -30, fill="black",outline="white",tags=cheatMenuTag)
     canvas.create_text(canvas.winfo_width()//2, 100, text="Enter a cheat code:",font = "Fixedsys 32",fill="white",tags=cheatMenuTag)
     canvas.create_window(canvas.winfo_width()//2,240,window = cheatEntry,tags=cheatMenuTag)
+    cheatEntry.focus_set()
     canvas.create_window(canvas.winfo_width()//2,320,window=cheatSubmitButton,tags=cheatMenuTag)
     canvas.tag_raise(cheatMenuTag)
 
@@ -546,6 +547,8 @@ bossImage = PhotoImage(file="assets/bossImage.png")
 bossLabel = Label(window,image=bossImage,borderwidth=0)
 
 greenEnemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
+ironHeart = PhotoImage(file="assets/statics/ironHeart.png")
+
 verticalWall = Image.open("assets/statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )
 leftWall = ImageTk.PhotoImage(verticalWall) # this extra line is ESSENTIAL to making it display. Also this variable can't be overwritten without it breaking. All hail garbage collection

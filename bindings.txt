@@ -1,7 +1,7 @@
-left: <Left>
-right: <Right>
-up: <Up>
-down: <Down>
+left: <a>
+right: <d>
+up: <w>
+down: <s>
 boss: <b>
 pause: <Escape>
 fire: <Button-1>

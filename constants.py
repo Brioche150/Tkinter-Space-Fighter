@@ -26,6 +26,6 @@ myWindow.configure(bg="black")
 myCanvas = Canvas(myWindow, bg="black", height=760, width=1336,borderwidth=0,highlightthickness=0)
 myCanvas.grid(column=3,row=1,rowspan=10)
 myMobs = {}
-myCheats={"mark grayson":False,"speed":False}
+myCheats={"mark grayson":False,"i show meat":False}
 
 

@@ -3,7 +3,7 @@ from string import hexdigits
 from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
-from constants import mobs, tickDelay, canvas,mobileTag
+from constants import mobs, tickDelay, canvas,mobileTag, cheats
 
 """This module stores all of the classes that will be moving around during the game.
 This is basically all of the sprites moving around in the game.
@@ -60,10 +60,10 @@ class Mobile:
 
         """
         if self.xSpeed != 0 or self.ySpeed != 0: 
-            self.x += self.xSpeed * tickDelay()
+            self.x += (self.xSpeed * tickDelay()) * (1+cheats()["i show meat"]) # This extra bit is a cursed way of easily increasing everything's speed if the cheat is active
             self.x = keepInBounds(self.x,0,canvas().winfo_width() - self.width)
 
-            self.y += self.ySpeed * tickDelay()
+            self.y += (self.ySpeed * tickDelay()) * (1+cheats()["i show meat"])
             self.y = keepInBounds(self.y,0,canvas().winfo_height() -self.height)
             
             canvas().moveto(self.imageID, math.floor(self.x), math.floor(self.y)) # Could use move, but I prefer this, it could help if things move at weird angles.
@@ -101,14 +101,16 @@ class Player(Mobile):
         for ID in IDs:
             if ID in mobs():
                 mob = mobs()[ID]
-                if mob.isEnemy:
-                    self.health -= 1
+                if mob.isEnemy:  
+                    if not cheats()["mark grayson"]: # Don't do player collision logic if the invincible cheat is active
+                        self.health -= 1
+                        print("Damage Taken! Health = " + str(self.health))
+                        if self.health <=0:
+                            canvas().delete(self.imageID)
+                            mobs().pop(self.imageID)
                     self.healthLabel.config(text = "X" + str(self.health))
                     mob.health -=1
-                    print("Damage Taken! Health = " + str(self.health))
-                    if self.health <=0:
-                        canvas().delete(self.imageID)
-                        mobs().pop(self.imageID)
+                    
                     if mob.health <= 0:
                         canvas().delete(ID)
                         mobs().pop(ID)
