@@ -262,7 +262,7 @@ class GruntEnemy(NPC):
             direction = calcDirection(self.x + 12, self.y +12, x,y)
             
             direction += rand.uniform(-math.pi/8, math.pi/8)
-            shot = Projectile(self.x +12,self.y +12,shotID,10,10,direction, speed=0.7)
+            shot = Projectile(self.x +12,self.y +12,shotID,10,10,direction, speed=(7/3)*self.speed)
             mobs()[shotID] = shot
             self.shotCooldown = self.shotCooldownReset
         else:

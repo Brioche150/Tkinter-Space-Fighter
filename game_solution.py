@@ -11,7 +11,7 @@ from textwrap import fill
 from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, EventType
 from turtle import down
 from PIL import Image, ImageTk
-from typing import Dict
+from typing import Dict, List
 from constants import tickDelay, window, canvas, mobs, mobileTag, cheats
 import mobiles
 
@@ -31,6 +31,7 @@ def moveDown(*ignore):
 def nameSubmit():
     
     name = nameEntry.get()[:3].upper() # First three letters that the user enters
+    name = name.replace(" ","-") # I can't allow them to have spaces, it breaks my hacky code
     with open("leaderboard.txt") as file:
         leaderboardString = ""
         for line in file:
@@ -90,17 +91,11 @@ def gameOver():
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
     """
-    global score, paused
+    global paused
     temp = mobs.copy()
     for ID in temp:
         mob = temp[ID]
         mob.move()
-        # if mob.health <=0:
-        #     if isinstance(mob,mobiles.GruntEnemy):
-        #         score +=1
-        #         scoreLabel.config(text = "Score:\n" + str(score))
-        #     canvas.delete(mob.imageID)
-        #     mobs.pop(ID)
         if isinstance(mob,mobiles.GruntEnemy):
             mob.fire(player.x,player.y)
     if player.health <=0:
@@ -144,7 +139,7 @@ def generateEnemies():
         enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
         enemyY = randint(0,canvas.winfo_height())
         enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage,tags=mobileTag())
-        enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5)
+        enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5,speed=enemySpeed)
         mobs[enemyID] = enemy
         enemySpawnCooldown = enemySpawnReset
 
@@ -154,8 +149,11 @@ def tick():
     if not paused:
         generateEnemies()
         handleMobs()
-        
-        #canvas.event_generate("<<fire>>") # This makes it fire every tick if brrt is enabled
+        global time, enemySpawnReset, enemySpeed, numEnemyChange
+        time += 1 * tickDelay()
+        if time % (((numEnemyChange * 8000)//tickDelay()) * tickDelay()) == 0: # Every 8 seconds (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
+            enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
+            enemySpeed *= 1.05
         if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
             canvas.moveto(background,0,0)
         else:
@@ -191,26 +189,31 @@ def saveGame(event):
             dictList.insert(0,mobInfo)
         else:
             dictList.append(mobInfo)
-        
+    gameData = {"enemySpawnReset":enemySpawnReset,"enemySpeed":enemySpeed,"time":time}
+    print(gameData)
+    dictList.append(gameData)
     with open("gameSave.txt","w") as file:
         file.write(json.dumps(dictList,default= lambda obj: None))
 
 def loadGame(event):
     with open("gameSave.txt","r") as file:   
         fileContents = file.read()
-        if len(fileContents) ==0:
+        if len(fileContents) <=1: # There's always going to be the game data saved, so any more means that the save is empty, but it could also just be the file was emptied.
             startGame(event)
             print("There is no game save to be loaded")
         else:
             for ID in mobs: #Just clears out all of the enemies on the canvas
                 canvas.delete(ID)
             mobs.clear()
-            global playerID, player,paused,enemySpawnCooldown,enemySpawnReset
+            global playerID, player,enemySpawnCooldown,enemySpawnReset, enemySpeed,time
             
-            enemySpawnCooldown = 1000 / tickDelay()
-            enemySpawnReset = enemySpawnCooldown
             
+            dictList : List
             dictList = json.loads(fileContents) # Making my classes serializable would make this a good bit easier, but I'm not sure how to do that.
+            gameData = dictList.pop()
+            enemySpawnReset, enemySpeed, time = gameData["enemySpawnReset"], gameData["enemySpeed"], gameData["time"]
+            enemySpawnCooldown = enemySpawnReset
+            print(gameData)
             for dict in dictList:
                 type = dict["type"]
                 if "Player" in type:
@@ -287,7 +290,7 @@ def rebind(onPress,onRelease, name,promptID,event : Event):
     
     with open("bindings.txt","w") as file:
         file.write(updatedBindings)
-    
+    controlsLabel.config(text=formatBindings())
     
     canvas.delete(promptID)
     window.unbind("<KeyPress>",keybindID)
@@ -421,10 +424,12 @@ def startGame(event):
     for ID in mobs: #Just clears out all of the enemies on the canvas
         canvas.delete(ID)
     mobs.clear()
-    global playerID, player,paused,enemySpawnCooldown,enemySpawnReset
+    global playerID, player,paused,enemySpawnCooldown,enemySpawnReset,enemySpeed, time
     
     enemySpawnCooldown = 1000 / tickDelay()
     enemySpawnReset = enemySpawnCooldown
+    enemySpeed = 0.3
+    time =0
     
     playerID = canvas.create_image(canvas.winfo_width()//3,canvas.winfo_height()//2, anchor="nw",image= playerImage,tags=mobileTag())
     player = mobiles.Player(canvas.winfo_width()//3,canvas.winfo_height()//2, playerID,playerImage.height(),playerImage.width())
@@ -604,6 +609,15 @@ healthLabel.grid(column=0,row=1)
 scoreLabel =Label(window,borderwidth=0,font=("Fixedsys",23),bg="black",fg="white")
 scoreLabel.grid(column=0,row=2,columnspan=2,rowspan=2)
 
+def formatBindings():
+    with open("bindings.txt") as file:
+        controlsText = file.read()
+        controlsText = controlsText.replace(": ",":\n")
+        controlsText = controlsText.replace(">",">\n")
+        return controlsText
+controlsLabel = Label(window,borderwidth=0,font=("Fixedsys",12),bg="black",fg="white",text=formatBindings())
+controlsLabel.grid(column=0,row=4,rowspan=6)
+
 cheatsLabel = Label(window,borderwidth=0,font=("Fixedsys", 15),bg="black",fg="white")
 cheatsLabel.grid(column=1,row=12,columnspan=999)
 
@@ -652,8 +666,10 @@ mousebindID = ""
 mouse1DownBind = ""
 
 enemySpawnCooldown = 1000 / tickDelay()
+enemySpeed = 0.3
 enemySpawnReset = enemySpawnCooldown
-score =0
+time = 0 # This will track the time in milliseconds that has passed, by working with tickDelay()
+numEnemyChange= 1
 
 #Making the gameOver elements
 nameEntry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
