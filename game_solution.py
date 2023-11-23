@@ -50,7 +50,8 @@ def nameSubmit():
                 leaderboardString += line
     with open("leaderboard.txt","w") as file:
         file.write(leaderboardString)
-    with open("bindings.txt") as file:
+    
+    with open("bindings.txt") as file: # This rebinds boss key after finishing typing
         for line in file:
             if "boss" in line:
                 keybind = line.split(" ")[1].strip()
@@ -86,7 +87,6 @@ def gameOver():
         canvas.create_text(canvas.winfo_width()//2,240,text="No fame for you, cheater",font="Fixedsys 32", fill="white",tags=(gameOverTag))
     canvas.create_window(canvas.winfo_width()//2,320,window=nameSubmitButton,tags=(gameOverTag,GOWindowTag))
     canvas.tag_raise(gameOverTag)
-
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
     """
@@ -135,7 +135,6 @@ def unpause(*ignore):
         canvas.tag_lower(menuTag)
         countdownID = canvas.create_text(canvas.winfo_width()//2,canvas.winfo_height()//2,text="3",font="Fixedsys 36",fill="white")
         window.after(750,lambda ID = countdownID: countdown(ID,3))
-        #tick()
 
 def generateEnemies():
     global enemySpawnCooldown
@@ -155,6 +154,8 @@ def tick():
     if not paused:
         generateEnemies()
         handleMobs()
+        
+        #canvas.event_generate("<<fire>>") # This makes it fire every tick if brrt is enabled
         if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
             canvas.moveto(background,0,0)
         else:
@@ -307,6 +308,7 @@ def getRebind(event,name,onPress,onRelease = None):
     mousebindID =window.bind("<Button>",lambda event, onPress = onPress, onRelease = onRelease,promptID = promptID, name = name: rebind(onPress,onRelease,name,promptID,event),add=True)
     if mouse1DownBind == "":
         mouse1DownBind = window.bind("<Button-1>",mouse1Binding)
+    #Turns out I could have used virtual events instead of making keypress and button basically the same.
         
     
     
@@ -324,10 +326,24 @@ def cheatSubmit():
                 activeCheats += key +", "
             if cheat == "mark grayson":
                 heartLabel.config(image=ironHeart)
+            if cheats["brrrt"]:
+                window.bind("<Motion>",fire) # This will be used in tick to fire constantly
         cheatsLabel.config(text="Active Cheats: " + activeCheats[:-2])
     canvas.delete(cheatMenuTag)
+    with open("bindings.txt") as file: # This rebinds boss key after finishing typing
+        for line in file:
+            if "boss" in line:
+                keybind = line.split(" ")[1].strip()
+                window.bind(keybind,bossToggle)
 
 def cheat(event):
+    #This stops the user from flashing the boss screen if it's part of the name they give
+    with open("bindings.txt") as file:
+        for line in file:
+            if "boss" in line:
+                keybind = line.split(" ")[1].strip()
+                window.unbind(keybind)
+                
     cheatEntry.delete(0,END)
     canvas.create_rectangle(canvas.winfo_width()//4,30,3* (canvas.winfo_width()//4),canvas.winfo_height() -30, fill="black",outline="white",tags=cheatMenuTag)
     canvas.create_text(canvas.winfo_width()//2, 100, text="Enter a cheat code:",font = "Fixedsys 32",fill="white",tags=cheatMenuTag)
