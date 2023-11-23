@@ -98,6 +98,8 @@ def handleMobs():
         mob.move()
         if isinstance(mob,mobiles.GruntEnemy):
             mob.fire(player.x,player.y)
+        if isinstance(mob, mobiles.MiniBoss):
+            mob.fire()
     if player.health <=0:
         paused = True
         window.unbind("p")
@@ -147,7 +149,7 @@ def tick():
     """This is the key function that has to be called to allow the game to be played
     """
     if not paused:
-        generateEnemies()
+        #generateEnemies()
         handleMobs()
         global time, enemySpawnReset, enemySpeed, numEnemyChange
         time += 1 * tickDelay()
@@ -434,6 +436,9 @@ def startGame(event):
     playerID = canvas.create_image(canvas.winfo_width()//3,canvas.winfo_height()//2, anchor="nw",image= playerImage,tags=mobileTag())
     player = mobiles.Player(canvas.winfo_width()//3,canvas.winfo_height()//2, playerID,playerImage.height(),playerImage.width())
     mobs[playerID] = player
+    greenBossID = canvas.create_image(2*(canvas.winfo_width()//3),canvas.winfo_height()//2, anchor="nw",image= greenBossImage,tags=mobileTag())
+    greenBoss = mobiles.MiniBoss(2*(canvas.winfo_width()//3),canvas.winfo_height()//2,greenBossID,greenBossImage.height(),greenBossImage.width(),3*(math.pi/2),speed=0)
+    mobs[greenBossID] = greenBoss
 
     
     healthLabel.config(text="x" + str(player.health))
@@ -569,6 +574,8 @@ bossLabel = Label(window,image=bossImage,borderwidth=0)
 
 greenEnemyImage = PhotoImage(file="assets/enemies/littleGreenEnemy.png")
 ironHeart = PhotoImage(file="assets/statics/ironHeart.png")
+greenBossImage = PhotoImage(file="assets/enemies/greenBoss.png")
+
 
 verticalWall = Image.open("assets/statics/bigLeftWall.png")
 verticalWall = verticalWall.crop( (0, 0, verticalWall.width, int(canvas.cget('height'))) )

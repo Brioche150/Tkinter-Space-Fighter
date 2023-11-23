@@ -114,11 +114,14 @@ class Player(Mobile):
                     if mob.health <= 0:
                         canvas().delete(ID)
                         mobs().pop(ID)
-                        if isinstance(mob, GruntEnemy):
-                            self.score +=1
+                        if isinstance(mob, Enemy):
+                            if isinstance(mob, GruntEnemy):
+                                self.score +=1
+                            elif isinstance(mob, MiniBoss):
+                                self.score += 20
                             self.scoreLabel.config(text = "Score:\n" + str(self.score))
-                            
-                            break # Break is here because otherwise the player could get damaged multiple times in a frame, which is unfun.
+
+                    break # Break is here because otherwise the player could get damaged multiple times in a frame, which is unfun.
                 
     
     def fire(self,event):
@@ -146,6 +149,11 @@ class NPC(Mobile):
     Args:
         Mobile (_type_): _description_
     """
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=1,isEnemy = True) -> None:
+        super().__init__(x,y,imageID,height, width,speed,health,isEnemy)
+        self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
+        self.updateSpeedsFromDirection()
+    
     def move(self):
         super().move()
         #This code basically makes NPCs bounce off of walls, so they don't get stuck on them.
@@ -157,10 +165,7 @@ class NPC(Mobile):
             self.direction = math.pi - self.direction
             self.updateSpeedsFromDirection()
     
-    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=1,isEnemy = True) -> None:
-        super().__init__(x,y,imageID,height, width,speed,health,isEnemy)
-        self.direction =direction # This is going to be a bearing system, so 0 is up, pi/2 is right (radians because that's what math works in), etc. For most mobs it's going to be easier to direct them in terms of change angles
-        self.updateSpeedsFromDirection()
+    
         
     def updateSpeedsFromDirection(self):
         self.ySpeed = self.speed * -math.cos(self.direction)
@@ -190,7 +195,7 @@ class Projectile(NPC):
             for ID in IDs:
                 if ID in mobs():
                     mob = mobs()[ID]
-                    if mob.isEnemy and isinstance(mob,GruntEnemy):
+                    if mob.isEnemy and isinstance(mob, Enemy):
                         self.health -= 1
                         mob.health -=1
                         if self.health <=0:
@@ -214,17 +219,59 @@ class Projectile(NPC):
                 mobs().pop(self.imageID) 
         
 
-class GruntEnemy(NPC):
+class Enemy(NPC):
+    """All enemies will be a subclass of this. Really, the only point of this class is for the organisation, and to have one isInstance check
+
+    Args:
+        NPC (_type_): _description_
+    """
+    
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=1,shotCooldown = 1000) -> None:
+        super().__init__(x,y,imageID,height, width,direction,speed,health,isEnemy=True)
+        self.direction =direction
+        self.shotCooldown = shotCooldown // tickDelay() 
+        self.shotCooldownReset = self.shotCooldown  
+        self.updateSpeedsFromDirection()
+        
+    def fire(self):
+        if(self.shotCooldown <= 0):
+            self.shotCooldown = self.shotCooldownReset
+            return True
+        else:
+            self.shotCooldown -=1
+            return False
+
+class MiniBoss(Enemy):
+    """This will be a tougher miniboss tghat should make more of a bullet hell experience
+
+    Args:
+        Enemy (_type_): _description_
+    """
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=200,shotCooldown = 200) -> None:
+        super().__init__(x,y,imageID,height, width,direction,speed,health,shotCooldown)
+        self.direction =direction 
+        self.updateSpeedsFromDirection()
+        self.shotDirection =0
+    
+    def fire(self, **kwargs): # This is a bit of a cludge, since I'm 
+        if(super().fire()):
+            for i in range(8):
+                shotID = canvas().create_oval(self.x + 24,self.y +24,self.x+34,self.y+34,fill="red",tags=mobileTag())
+                direction = self.shotDirection + (i*(math.pi /4))
+                shot = Projectile(self.x +12,self.y +12,shotID,10,10,direction, speed=0.4)
+                mobs()[shotID] = shot
+            self.shotDirection += math.pi / 40
+    
+
+class GruntEnemy(Enemy):
     """Most enemies will be basic grunts, with only 1 health and firing infrequently
 
     Args:
         NPC (_type_): _description_
     """
-    def __init__(self,x,y,imageID,height,width, direction, speed =0.3, shotCooldown = 1000,turnCooldown = 1000) -> None:
-        super().__init__(x,y,imageID, height, width,direction,speed,isEnemy=True)
-        self.shotCooldown = shotCooldown // tickDelay() 
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=1, shotCooldown = 1000,turnCooldown = 1000) -> None:
+        super().__init__(x,y,imageID, height, width,direction,speed,shotCooldown=shotCooldown)
         self.turnCooldown = turnCooldown // (tickDelay() * 8) # This just makes them change direction quickly after they spawn
-        self.shotCooldownReset = self.shotCooldown   
         self.turnCooldownReset = turnCooldown // tickDelay()
         self.isSteering = False # This will be used to put the enemy into a state where they "steer", so turn more gradually, rather than suddenly changing direction
         self.turnRate =0
@@ -256,7 +303,7 @@ class GruntEnemy(NPC):
             y int: this is the y coordinate of the player at the time
  
         """
-        if(self.shotCooldown <= 0):
+        if(super().fire()):
             shotID = canvas().create_oval(self.x + 12,self.y +12,self.x+22,self.y+22,fill="red",tags=mobileTag())
             
             direction = calcDirection(self.x + 12, self.y +12, x,y)
@@ -264,7 +311,4 @@ class GruntEnemy(NPC):
             direction += rand.uniform(-math.pi/8, math.pi/8)
             shot = Projectile(self.x +12,self.y +12,shotID,10,10,direction, speed=(7/3)*self.speed)
             mobs()[shotID] = shot
-            self.shotCooldown = self.shotCooldownReset
-        else:
-            self.shotCooldown -=1
         
