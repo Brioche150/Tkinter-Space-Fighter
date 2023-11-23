@@ -9,12 +9,14 @@ def tickDelay(): # This should be used for anything that ou want to keep consist
 def window():
     return myWindow
 
-def canvas():
+def canvas() -> Canvas:
     return myCanvas
 def mobs():
     return myMobs
 def mobileTag():
     return "mobileTag"
+def minibossTag():
+    return "minibossTag"
 def cheats():
     return myCheats
 def setCheats(cheats):

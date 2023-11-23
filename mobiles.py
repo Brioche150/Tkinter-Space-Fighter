@@ -3,7 +3,7 @@ from string import hexdigits
 from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
-from constants import mobs, tickDelay, canvas,mobileTag, cheats
+from constants import minibossTag, mobs, tickDelay, canvas,mobileTag, cheats
 
 """This module stores all of the classes that will be moving around during the game.
 This is basically all of the sprites moving around in the game.
@@ -206,6 +206,9 @@ class Projectile(NPC):
                             mobs().pop(ID)
                             self.player.score +=1
                             self.player.scoreLabel.config(text = "Score:\n" + str(self.player.score))
+                        elif isinstance(mob, MiniBoss):
+                            mob : MiniBoss
+                            canvas().coords(mob.fillID,mob.xStart,canvas().winfo_height()-30,math.floor(mob.xStart + (mob.health * mob.pxPerHealth)), canvas().winfo_height())
                         break
                     
                 
@@ -258,6 +261,13 @@ class MiniBoss(Enemy):
         self.totalLoopTimeReset = self.totalLoopTime
         self.moveTime = (2*self.totalLoopTime)//3
         self.moveTimeReset = self.moveTime
+        
+        #Now I need to make a health bar
+        width = 400
+        self.pxPerHealth = width / self.health
+        self.xStart = canvas().winfo_width()//2 - 200
+        self.outlineID = canvas().create_rectangle(self.xStart,canvas().winfo_height() -30,self.xStart + width,canvas().winfo_height(),fill="black",outline="green",tags=minibossTag())
+        self.fillID = canvas().create_rectangle(self.xStart,canvas().winfo_height() -30,self.xStart + width,canvas().winfo_height(),fill="green",outline="green",tags=minibossTag())
         
     
     def fire(self): 

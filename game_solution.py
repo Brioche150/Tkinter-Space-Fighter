@@ -12,7 +12,7 @@ from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, Ev
 from turtle import down
 from PIL import Image, ImageTk
 from typing import Dict, List
-from constants import tickDelay, window, canvas, mobs, mobileTag, cheats, setCheats
+from constants import minibossTag, tickDelay, window, canvas, mobs, mobileTag, cheats, setCheats
 import mobiles
 
 def moveLeft(*ignore):
@@ -105,6 +105,7 @@ def handleMobs():
         window.unbind("p")
         gameOver()
     if miniboss != None and miniboss.health <=0:
+        canvas.delete(minibossTag())
         miniboss = None
         minibossID = -1
         
@@ -161,7 +162,8 @@ def tick():
             if time % ((8000//tickDelay()) * tickDelay()) == 0 : # After every 24 seconds of normal play time, spawn a miniboss
                 x,y = canvas.winfo_width()- greenBossImage.width(),canvas.winfo_height()//2
                 minibossID = canvas.create_image(x,y,anchor = "nw",image = greenBossImage,tags=mobileTag())
-                miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi))
+                miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi),speed= ((enemySpeed-0.3) * 0.5) + 0.45)
+                #The weird equation for speed is because the default speed for the boss is 0.45, and 0.4 for grunts. I want the speed increase of the boss to be half the speed increase of the grunts.
                 mobs[minibossID] = miniboss
             if time % ((4000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
                 enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
