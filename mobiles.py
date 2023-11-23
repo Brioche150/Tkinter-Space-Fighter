@@ -247,13 +247,20 @@ class MiniBoss(Enemy):
     Args:
         Enemy (_type_): _description_
     """
-    def __init__(self,x,y,imageID,height,width, direction, speed =0.3,health=200,shotCooldown = 200) -> None:
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.45,health=50,shotCooldown = 200) -> None:
         super().__init__(x,y,imageID,height, width,direction,speed,health,shotCooldown)
         self.direction =direction 
         self.updateSpeedsFromDirection()
         self.shotDirection =0
+        # The boss's movement pattern will be to pick a direction, move that way for 2 seconds, and then sit still for the next second. These times should decrease with speed.
+        self.speedReset = speed
+        self.totalLoopTime = (3000 // tickDelay()) // (speed +0.55) # This gives the length of time before it loops how it moves
+        self.totalLoopTimeReset = self.totalLoopTime
+        self.moveTime = (2*self.totalLoopTime)//3
+        self.moveTimeReset = self.moveTime
+        
     
-    def fire(self, **kwargs): # This is a bit of a cludge, since I'm 
+    def fire(self): 
         if(super().fire()):
             for i in range(8):
                 shotID = canvas().create_oval(self.x + 24,self.y +24,self.x+34,self.y+34,fill="red",tags=mobileTag())
@@ -261,6 +268,21 @@ class MiniBoss(Enemy):
                 shot = Projectile(self.x +12,self.y +12,shotID,10,10,direction, speed=0.4)
                 mobs()[shotID] = shot
             self.shotDirection += math.pi / 40
+    def move(self):
+        super().move()
+        #This implements the movement pattern I just described
+        if self.totalLoopTime ==0:
+            self.speed = self.speedReset
+            self.totalLoopTime = self.totalLoopTimeReset
+            self.moveTime = self.moveTimeReset
+            self.direction = rand.uniform(0,2* math.pi)
+            self.updateSpeedsFromDirection()
+            
+        elif self.moveTime ==0:
+            self.speed =0
+            self.updateSpeedsFromDirection()
+        self.totalLoopTime -=1
+        self.moveTime -=1
     
 
 class GruntEnemy(Enemy):

@@ -6,13 +6,13 @@
 import json
 import math
 from platform import release
-from random import randint
+from random import randint, uniform
 from textwrap import fill
 from tkinter import END, Button, Entry, Event, Label, Tk, Canvas, PhotoImage, EventType
 from turtle import down
 from PIL import Image, ImageTk
 from typing import Dict, List
-from constants import tickDelay, window, canvas, mobs, mobileTag, cheats
+from constants import tickDelay, window, canvas, mobs, mobileTag, cheats, setCheats
 import mobiles
 
 def moveLeft(*ignore):
@@ -91,7 +91,7 @@ def gameOver():
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
     """
-    global paused
+    global paused, miniboss, minibossID
     temp = mobs.copy()
     for ID in temp:
         mob = temp[ID]
@@ -104,6 +104,9 @@ def handleMobs():
         paused = True
         window.unbind("p")
         gameOver()
+    if miniboss != None and miniboss.health <=0:
+        miniboss = None
+        minibossID = -1
         
 def pause(*ignore):
     global paused
@@ -149,13 +152,20 @@ def tick():
     """This is the key function that has to be called to allow the game to be played
     """
     if not paused:
-        #generateEnemies()
+        
         handleMobs()
-        global time, enemySpawnReset, enemySpeed, numEnemyChange
-        time += 1 * tickDelay()
-        if time % (((numEnemyChange * 8000)//tickDelay()) * tickDelay()) == 0: # Every 8 seconds (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
-            enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
-            enemySpeed *= 1.05
+        global time, enemySpawnReset, enemySpeed, miniboss, minibossID
+        if miniboss == None:
+            time += tickDelay()
+            generateEnemies()
+            if time % ((8000//tickDelay()) * tickDelay()) == 0 : # After every 24 seconds of normal play time, spawn a miniboss
+                x,y = canvas.winfo_width()- greenBossImage.width(),canvas.winfo_height()//2
+                minibossID = canvas.create_image(x,y,anchor = "nw",image = greenBossImage,tags=mobileTag())
+                miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi))
+                mobs[minibossID] = miniboss
+            if time % ((4000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
+                enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
+                enemySpeed *= 1.05
         if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
             canvas.moveto(background,0,0)
         else:
@@ -194,6 +204,7 @@ def saveGame(event):
     gameData = {"enemySpawnReset":enemySpawnReset,"enemySpeed":enemySpeed,"time":time}
     print(gameData)
     dictList.append(gameData)
+    dictList.append(cheats)
     with open("gameSave.txt","w") as file:
         file.write(json.dumps(dictList,default= lambda obj: None))
 
@@ -207,15 +218,18 @@ def loadGame(event):
             for ID in mobs: #Just clears out all of the enemies on the canvas
                 canvas.delete(ID)
             mobs.clear()
-            global playerID, player,enemySpawnCooldown,enemySpawnReset, enemySpeed,time
-            
+            global playerID, player,minibossID,miniboss, enemySpawnCooldown,enemySpawnReset, enemySpeed,time, cheats
+            miniboss = None # Just to clear it in case there was a miniboss, but the load doesn't have it
+            minibossID = -1
             
             dictList : List
             dictList = json.loads(fileContents) # Making my classes serializable would make this a good bit easier, but I'm not sure how to do that.
+            cheats = dictList.pop() # Sets the cheats to be the same as what is was in the saved game
+            setCheats(cheats)
             gameData = dictList.pop()
+            
             enemySpawnReset, enemySpeed, time = gameData["enemySpawnReset"], gameData["enemySpeed"], gameData["time"]
             enemySpawnCooldown = enemySpawnReset
-            print(gameData)
             for dict in dictList:
                 type = dict["type"]
                 if "Player" in type:
@@ -228,12 +242,14 @@ def loadGame(event):
                     if not dict["isEnemy"]:
                         projectile.player = player
                     mobs[projectileID] = projectile
-                    #projectile.updateSpeedsFromDirection()
                 elif "GruntEnemy" in type:
                     enemyID =  canvas.create_image(dict["x"],dict["y"],anchor="nw",image= greenEnemyImage,tags=mobileTag())
                     enemy = mobiles.GruntEnemy(dict["x"],dict["y"],enemyID,dict["height"],dict["width"],dict["direction"],speed=dict["speed"],shotCooldown=dict["shotCooldownReset"] * tickDelay(),turnCooldown=dict["turnCooldownReset"] * tickDelay())
                     mobs[enemyID] = enemy
-                    #enemy.updateSpeedsFromDirection()
+                elif "MiniBoss" in type:
+                    minibossID = canvas.create_image(dict["x"],dict["y"], anchor="nw",image= greenBossImage,tags=mobileTag())
+                    miniboss = mobiles.MiniBoss(dict["x"],dict["y"],minibossID,dict["height"],dict["width"],dict["direction"],dict["speed"],dict["health"],dict["shotCooldown"])
+                    mobs[minibossID] = miniboss
                 
             healthLabel.config(text="x" + str(player.health))
             scoreLabel.config(text="Score:\n" + str(player.score))
@@ -426,7 +442,13 @@ def startGame(event):
     for ID in mobs: #Just clears out all of the enemies on the canvas
         canvas.delete(ID)
     mobs.clear()
+    
     global playerID, player,paused,enemySpawnCooldown,enemySpawnReset,enemySpeed, time
+    
+    for key in cheats: # Clears the cheats when you start a new game as well
+        cheats[key] = False
+    setCheats(cheats)
+    
     
     enemySpawnCooldown = 1000 / tickDelay()
     enemySpawnReset = enemySpawnCooldown
@@ -436,9 +458,9 @@ def startGame(event):
     playerID = canvas.create_image(canvas.winfo_width()//3,canvas.winfo_height()//2, anchor="nw",image= playerImage,tags=mobileTag())
     player = mobiles.Player(canvas.winfo_width()//3,canvas.winfo_height()//2, playerID,playerImage.height(),playerImage.width())
     mobs[playerID] = player
-    greenBossID = canvas.create_image(2*(canvas.winfo_width()//3),canvas.winfo_height()//2, anchor="nw",image= greenBossImage,tags=mobileTag())
-    greenBoss = mobiles.MiniBoss(2*(canvas.winfo_width()//3),canvas.winfo_height()//2,greenBossID,greenBossImage.height(),greenBossImage.width(),3*(math.pi/2),speed=0)
-    mobs[greenBossID] = greenBoss
+    # greenBossID = canvas.create_image(2*(canvas.winfo_width()//3),canvas.winfo_height()//2, anchor="nw",image= greenBossImage,tags=mobileTag())
+    # greenBoss = mobiles.MiniBoss(2*(canvas.winfo_width()//3),canvas.winfo_height()//2,greenBossID,greenBossImage.height(),greenBossImage.width(),3*(math.pi/2),speed=0)
+    # mobs[greenBossID] = greenBoss
 
     
     healthLabel.config(text="x" + str(player.health))
@@ -567,7 +589,8 @@ bossShown = False
 
 playerID : int
 player : mobiles.Player = None
-
+minibossID : int
+miniboss : mobiles.MiniBoss = None
 
 bossImage = PhotoImage(file="assets/bossImage.png")
 bossLabel = Label(window,image=bossImage,borderwidth=0)
@@ -676,7 +699,6 @@ enemySpawnCooldown = 1000 / tickDelay()
 enemySpeed = 0.3
 enemySpawnReset = enemySpawnCooldown
 time = 0 # This will track the time in milliseconds that has passed, by working with tickDelay()
-numEnemyChange= 1
 
 #Making the gameOver elements
 nameEntry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")

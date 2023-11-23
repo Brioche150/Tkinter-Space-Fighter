@@ -17,6 +17,8 @@ def mobileTag():
     return "mobileTag"
 def cheats():
     return myCheats
+def setCheats(cheats):
+    myCheats = cheats
 
 myWindow = Tk()
 myWindow.title("Space-Fighter")
