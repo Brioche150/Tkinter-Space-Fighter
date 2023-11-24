@@ -1,12 +1,17 @@
+from email.mime import image
 import math
 from string import hexdigits
-from tkinter import Label, Canvas
+from tkinter import Label, Canvas, PhotoImage
 from typing import Dict
 import random as rand
 from constants import minibossTag, mobs, tickDelay, canvas,mobileTag, cheats
 """This module stores all of the classes that will be moving around during the game.
 This is basically all of the sprites moving around in the game.
 """
+#This needs public access between projectile and the miniboss for this to work
+bossGreen = PhotoImage(file="assets/enemies/greenBoss.png")
+bossFlash = PhotoImage(file="assets/enemies/greenBossRedFlash.png")
+
 
 def keepInBounds(num,min,max):
         if num < min:
@@ -41,6 +46,7 @@ class Mobile:
     speed is a float giving the maximum speed of the object
     health is an int storing the health of the object
     """
+    
     def __init__(self, x, y, imageID, height, width, speed,health =1, isEnemy =True) -> None:
         self.x =x
         self.y =y
@@ -226,6 +232,8 @@ class Projectile(NPC):
                         elif isinstance(mob, MiniBoss):
                             mob : MiniBoss
                             canvas().coords(mob.fillID,mob.xStart,canvas().winfo_height()-30,math.floor(mob.xStart + (mob.health * mob.pxPerHealth)), canvas().winfo_height())
+                            mob.flashTime = mob.flashReset #This will make the miniboss flash white
+                            
                         break
                     
                 
@@ -267,7 +275,7 @@ class MiniBoss(Enemy):
     Args:
         Enemy (_type_): _description_
     """
-    def __init__(self,x,y,imageID,height,width, direction, speed =0.45,health=50,shotCooldown = 200) -> None:
+    def __init__(self,x,y,imageID,height,width, direction, speed =0.45,health=40,shotCooldown = 200) -> None:
         super().__init__(x,y,imageID,height, width,direction,speed,health,shotCooldown)
         self.direction =direction 
         self.updateSpeedsFromDirection()
@@ -286,7 +294,9 @@ class MiniBoss(Enemy):
         self.outlineID = canvas().create_rectangle(self.xStart,canvas().winfo_height() -30,self.xStart + width,canvas().winfo_height(),fill="black",outline="green",tags=minibossTag())
         self.fillID = canvas().create_rectangle(self.xStart,canvas().winfo_height() -30,self.xStart + width,canvas().winfo_height(),fill="green",outline="green",tags=minibossTag())
         
-    
+        
+        self.flashReset = 60 // tickDelay() #So the boss will flash for about 40ms after each hit landed
+        self.flashTime = 0
     def fire(self): 
         if(super().fire()):
             for i in range(8):
@@ -297,7 +307,7 @@ class MiniBoss(Enemy):
             self.shotDirection += math.pi / 40
     def move(self):
         super().move()
-        #This implements the movement pattern I just described
+        #This implements the movement pattern described in the constructor
         if self.totalLoopTime ==0:
             self.speed = self.speedReset
             self.totalLoopTime = self.totalLoopTimeReset
@@ -310,6 +320,14 @@ class MiniBoss(Enemy):
             self.updateSpeedsFromDirection()
         self.totalLoopTime -=1
         self.moveTime -=1
+        #This makes the miniboss flash after getting hit
+        if self.flashTime == self.flashReset:
+            canvas().itemconfig(self.imageID,image=bossFlash)
+            self.flashTime -=1
+        elif self.flashTime >0:
+            self.flashTime -=1
+            if self.flashTime ==0:
+                canvas().itemconfig(self.imageID,image=bossGreen)
     
 
 class GruntEnemy(Enemy):

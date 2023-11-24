@@ -1,7 +1,7 @@
 """This module will just store constants that I have to keep across the game
 """
 
-from tkinter import Canvas, Tk
+from tkinter import Canvas, PhotoImage, Tk
 
 def tickDelay(): # This should be used for anything that ou want to keep consistent with timings. So that's things like cooldowns, movement speed, etc
     return 10
@@ -31,5 +31,6 @@ myCanvas = Canvas(myWindow, bg="black", height=760, width=1336,borderwidth=0,hig
 myCanvas.grid(column=3,row=1,rowspan=10)
 myMobs = {}
 myCheats={"mark grayson":False,"i show meat":False, "Boogie": False, "brrrt": False}
-
+greenVersion = PhotoImage(file="assets/enemies/greenBoss.png")
+whiteVersion = PhotoImage(file="assets/enemies/greenBossFlash.png")
 

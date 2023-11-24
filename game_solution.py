@@ -91,7 +91,7 @@ def gameOver():
 def handleMobs():
     """This gets called with every tick, and it makes all of the mobs update their state as needed.
     """
-    global paused, miniboss, minibossID
+    global paused, miniboss
     temp = mobs.copy()
     for ID in temp:
         mob = temp[ID]
@@ -107,7 +107,6 @@ def handleMobs():
     if miniboss != None and miniboss.health <=0:
         canvas.delete(minibossTag())
         miniboss = None
-        minibossID = -1
         
 def pause(*ignore):
     global paused
@@ -155,7 +154,7 @@ def tick():
     if not paused:
         
         handleMobs()
-        global time, enemySpawnReset, enemySpeed, miniboss, minibossID
+        global time, enemySpawnReset, enemySpeed, miniboss
         if miniboss == None:
             time += tickDelay()
             generateEnemies()
@@ -165,7 +164,7 @@ def tick():
                 miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi),speed= ((enemySpeed-0.3) * 0.5) + 0.45)
                 #The weird equation for speed is because the default speed for the boss is 0.45, and 0.4 for grunts. I want the speed increase of the boss to be half the speed increase of the grunts.
                 mobs[minibossID] = miniboss
-            if time % ((12000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
+            if time % ((12000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 12000 ms exactly), decrease the spawn cooldown and increase their speed. 
                 enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
                 enemySpeed *= 1.05
         if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
@@ -220,9 +219,8 @@ def loadGame(event):
             for ID in mobs: #Just clears out all of the enemies on the canvas
                 canvas.delete(ID)
             mobs.clear()
-            global playerID, player,minibossID,miniboss, enemySpawnCooldown,enemySpawnReset, enemySpeed,time, cheats
+            global player,miniboss, enemySpawnCooldown,enemySpawnReset, enemySpeed,time, cheats
             miniboss = None # Just to clear it in case there was a miniboss, but the load doesn't have it
-            minibossID = -1
             
             dictList : List
             dictList = json.loads(fileContents) # Making my classes serializable would make this a good bit easier, but I'm not sure how to do that.
@@ -445,7 +443,7 @@ def startGame(event):
         canvas.delete(ID)
     mobs.clear()
     
-    global playerID, player,paused,enemySpawnCooldown,enemySpawnReset,enemySpeed, time
+    global player,paused,enemySpawnCooldown,enemySpawnReset,enemySpeed, time
     
     for key in cheats: # Clears the cheats when you start a new game as well
         cheats[key] = False
@@ -589,9 +587,7 @@ playerImage = PhotoImage(file="assets/player/player.png") # I can't just pass th
 paused = True
 bossShown = False
 
-playerID : int
 player : mobiles.Player = None
-minibossID : int
 miniboss : mobiles.MiniBoss = None
 
 bossImage = PhotoImage(file="assets/bossImage.png")
@@ -654,14 +650,6 @@ cheatsLabel = Label(window,borderwidth=0,font=("Fixedsys", 15),bg="black",fg="wh
 cheatsLabel.grid(column=1,row=12,columnspan=999)
 
 
-
-
-# test = Image.open("crab.jpg") # crab found here https://pixabay.com/photos/crab-beach-sand-crustacean-8258856/
-# test = test.resize((500,200), Image.LANCZOS) # Not sure how needed LANCZOS is needed, but it's some form of antialias.
-# test = ImageTk.PhotoImage(test) # Have to convert to PhotoImage to use in the canvas
-# crabID = canvas.create_image(20,20,anchor="nw",image=test) # anchor basically says to take a certain part of an image, a corner, edge or center, and make that part of the image appear at the specified coordinates
-#coordinates at the beginning are x then y
-
 #Just collecting tags here in case I change them, and to avoid typos. 
 menuTag = "menuTag"
 resumeTag = "resume"
@@ -694,13 +682,13 @@ exitRebindTag = "exitRebindTag"
 keybindID = ""
 mousebindID = ""
 
-#
+#This is a horrible little thing I have to do for rebinding to allow mouse-1 to be rebound properly. These problems probably would have been solved if I used an actual button with the create_window function. Oh well
 mouse1DownBind = ""
 
 enemySpawnCooldown = 1000 / tickDelay()
 enemySpeed = 0.3
 enemySpawnReset = enemySpawnCooldown
-time = 0 # This will track the time in milliseconds that has passed, by working with tickDelay()
+time = 0 # This will track the time in milliseconds that has passed in "normal" playtime, so excluding bosses, by working with tickDelay()
 
 #Making the gameOver elements
 nameEntry = Entry(window,bg="black",font=("Fixedsys",32),fg="white")
