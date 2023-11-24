@@ -4,7 +4,6 @@ from tkinter import Label, Canvas
 from typing import Dict
 import random as rand
 from constants import minibossTag, mobs, tickDelay, canvas,mobileTag, cheats
-
 """This module stores all of the classes that will be moving around during the game.
 This is basically all of the sprites moving around in the game.
 """
@@ -89,22 +88,30 @@ class Mobile:
 class Player(Mobile):
     """This is the player class, which the user will control in this space fighter game.
     """
-    def __init__(self, x,y, imageID, height, width, speed =0.5, health =3,score=0) -> None:
+    def __init__(self, x,y, imageID, height, width, speed =0.5, health =5,score=0) -> None:
         super().__init__(x,y,imageID, height, width,speed,health,isEnemy=False)
         self.healthLabel: Label = None 
         self.scoreLabel: Label = None 
         self.score =score
+        self.iFramesReset = 1000 // tickDelay() #So they should have a second of invincibility after getting hit.
+        self.iFrames =0
+        self.flash = canvas().create_rectangle(0,0,canvas().winfo_width(),canvas().winfo_height(),fill="#b02328")
+        canvas().tag_lower(self.flash)
+        self.flashReset = 50 // tickDelay()
+        self.flashCountdown = 0
         
     def move(self):
         super().move()
-        IDs = canvas().find_overlapping(self.x,self.y,self.x+self.width,self.y+self.height)
-        for ID in IDs:
-            if ID in mobs():
-                mob = mobs()[ID]
-                if mob.isEnemy:  
-                    if not cheats()["mark grayson"]: # Don't do player collision logic if the invincible cheat is active
+        if self.iFrames ==0:
+            IDs = canvas().find_overlapping(self.x,self.y,self.x+self.width,self.y+self.height)
+            for ID in IDs: # This loop gives collision logic when an enemy hits the Player, to decrease health and set i frames
+                if ID in mobs() and mobs()[ID].isEnemy:
+                    mob = mobs()[ID]  
+                    if not cheats()["mark grayson"]: # Don't make the player lose health if the invincible cheat is active. This does allow ramming as a thing.
                         self.health -= 1
-                        print("Damage Taken! Health = " + str(self.health))
+                        self.iFrames = self.iFramesReset
+                        self.flashCountdown = self.flashReset
+                        canvas().tag_raise(self.flash)
                         if self.health <=0:
                             canvas().delete(self.imageID)
                             mobs().pop(self.imageID)
@@ -122,7 +129,17 @@ class Player(Mobile):
                             self.scoreLabel.config(text = "Score:\n" + str(self.score))
 
                     break # Break is here because otherwise the player could get damaged multiple times in a frame, which is unfun.
-                
+        else: # deals with after the player's been hit
+            if self.iFrames %(1.5*tickDelay()) >tickDelay(): # This would break at tick delays of like 3 or less, but that's a really high framerate
+                canvas().tag_lower(self.imageID)
+            else: # This should guarantee that it comes on top at the end, because it'll last be checked when iFrames =1
+                canvas().tag_raise(self.imageID)
+            self.iFrames -=1
+            #Also I can put white flash in here since it means its checked slightly less
+            if self.flashCountdown ==0:
+                canvas().tag_lower(self.flash)
+            else:
+                self.flashCountdown -=1
     
     def fire(self,event):
         """This is how the player fires shots where the mouse is at the time

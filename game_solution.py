@@ -159,13 +159,13 @@ def tick():
         if miniboss == None:
             time += tickDelay()
             generateEnemies()
-            if time % ((8000//tickDelay()) * tickDelay()) == 0 : # After every 24 seconds of normal play time, spawn a miniboss
+            if time % ((24000//tickDelay()) * tickDelay()) == 0 : # After every 24 seconds of normal play time, spawn a miniboss
                 x,y = canvas.winfo_width()- greenBossImage.width(),canvas.winfo_height()//2
                 minibossID = canvas.create_image(x,y,anchor = "nw",image = greenBossImage,tags=mobileTag())
                 miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi),speed= ((enemySpeed-0.3) * 0.5) + 0.45)
                 #The weird equation for speed is because the default speed for the boss is 0.45, and 0.4 for grunts. I want the speed increase of the boss to be half the speed increase of the grunts.
                 mobs[minibossID] = miniboss
-            if time % ((4000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
+            if time % ((12000//tickDelay()) * tickDelay()) == 0: # Every 12 seconds of normal playtime (approximately if the tick delay makes it so that it doesn't count to 8000 ms exactly), decrease the spawn cooldown and increase their speed. 
                 enemySpawnReset = math.ceil(enemySpawnReset * 0.95) # This has to be a whole number, since it's counted down
                 enemySpeed *= 1.05
         if canvas.coords(background)[0] == -2988: # This sets the background back to the beginning if it's scrolled too far
