@@ -121,6 +121,7 @@ class Player(Mobile):
                         if self.health <=0:
                             canvas().delete(self.imageID)
                             mobs().pop(self.imageID)
+                            canvas().lower(self.flash)
                     self.healthLabel.config(text = "X" + str(self.health))
                     mob.health -=1
                     
@@ -227,7 +228,10 @@ class Projectile(NPC):
                         if mob.health <= 0:
                             canvas().delete(ID)
                             mobs().pop(ID)
-                            self.player.score +=1
+                            if isinstance(mob, GruntEnemy):
+                                self.player.score +=1
+                            elif isinstance(mob, MiniBoss):
+                                self.player.score += 20
                             self.player.scoreLabel.config(text = "Score:\n" + str(self.player.score))
                         elif isinstance(mob, MiniBoss):
                             mob : MiniBoss

@@ -22,6 +22,7 @@ def cheats():
 def setCheats(cheats):
     myCheats = cheats
 
+
 myWindow = Tk()
 myWindow.title("Space-Fighter")
 myWindow.geometry("1536x864")
@@ -31,6 +32,4 @@ myCanvas = Canvas(myWindow, bg="black", height=760, width=1336,borderwidth=0,hig
 myCanvas.grid(column=3,row=1,rowspan=10)
 myMobs = {}
 myCheats={"mark grayson":False,"i show meat":False, "Boogie": False, "brrrt": False}
-greenVersion = PhotoImage(file="assets/enemies/greenBoss.png")
-whiteVersion = PhotoImage(file="assets/enemies/greenBossFlash.png")
 

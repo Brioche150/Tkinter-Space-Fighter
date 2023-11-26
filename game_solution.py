@@ -100,13 +100,14 @@ def handleMobs():
             mob.fire(player.x,player.y)
         if isinstance(mob, mobiles.MiniBoss):
             mob.fire()
+    if miniboss != None and miniboss.health <=0:
+        canvas.delete(minibossTag())
+        miniboss = None
     if player.health <=0:
         paused = True
         window.unbind("p")
         gameOver()
-    if miniboss != None and miniboss.health <=0:
-        canvas.delete(minibossTag())
-        miniboss = None
+    
         
 def pause(*ignore):
     global paused
@@ -160,7 +161,7 @@ def tick():
             generateEnemies()
             if time % ((24000//tickDelay()) * tickDelay()) == 0 : # After every 24 seconds of normal play time, spawn a miniboss
                 x,y = canvas.winfo_width()- greenBossImage.width(),canvas.winfo_height()//2
-                minibossID = canvas.create_image(x,y,anchor = "nw",image = greenBossImage,tags=mobileTag())
+                minibossID = canvas.create_image(x,y,anchor = "nw",image = greenBossImage,tags=(mobileTag(),minibossTag()))
                 miniboss = mobiles.MiniBoss(x,y,minibossID,greenBossImage.height(),greenBossImage.width(),uniform(0,2*math.pi),speed= ((enemySpeed-0.3) * 0.5) + 0.45)
                 #The weird equation for speed is because the default speed for the boss is 0.45, and 0.4 for grunts. I want the speed increase of the boss to be half the speed increase of the grunts.
                 mobs[minibossID] = miniboss
@@ -442,6 +443,10 @@ def startGame(event):
     for ID in mobs: #Just clears out all of the enemies on the canvas
         canvas.delete(ID)
     mobs.clear()
+    
+    global miniboss 
+    miniboss = None
+    canvas.delete(minibossTag())
     
     global player,paused,enemySpawnCooldown,enemySpawnReset,enemySpeed, time
     
