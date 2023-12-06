@@ -142,7 +142,7 @@ def generateEnemies():
     if enemySpawnCooldown >0:
         enemySpawnCooldown -=1
     else:
-        enemyX = randint(canvas.winfo_width() * 3/4, canvas.winfo_width())
+        enemyX = randint((canvas.winfo_width() * 3) //4, canvas.winfo_width())
         enemyY = randint(0,canvas.winfo_height())
         enemyID =  canvas.create_image(enemyX,enemyY,anchor="nw",image= greenEnemyImage,tags=mobileTag())
         enemy = mobiles.GruntEnemy(enemyX,enemyY,enemyID,greenEnemyImage.height(),greenEnemyImage.width(),math.pi * 1.5,speed=enemySpeed)
